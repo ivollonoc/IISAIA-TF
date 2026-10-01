@@ -1,0 +1,53 @@
+Objetivo:
+Desarrollar una app web para el manejo de socios de un club deportivo.
+Vamos a tener tres enfoques para esta app
+-Visual del desarrollador para administrar clubes afiliados
+-Visual del club para gestionar sus socios
+-Visual del socio para gestionar sus datos relacionados al club.
+
+El dominio tendria las siguientes rutas
+-Admin general
+-gestiondesocios.com
+url multitenant para cada club
+-nombre.gestiondesocios.com 
+
+Funcionalidades básicas y tipo de usuarios
+Admin general
+-Gestión de clubes
+-Gestión de usuarios administradores de clubes.
+
+Admin Club
+-Gestión de socios (altas, modificaciones)
+-Cobros
+-Configurar calendario de actividades y eventos
+
+Socio
+-gestión de usuario para login
+-datos (actividades realizadas, tipo de socio, pagos)
+-inscripciones/reserva de turnos para actividades y eventos
+-posibilidad de pago mensual
+
+Stack sugerido:
+Frontend
+NextJs
+ReactJs
+Typescript
+Tailwind Css
+
+Para backend
+Analizar si conviene utilizar postogres o una base de datos no relacional. 
+Planificar el backend en Nodejs con API publica y utilizar JWT 
+Para registro y login analizar opciones de Google y/o Auth0
+
+TODO - Definir modelo de base de datos
+Base de datos con un diseño multi tenant para los distintos clubes.  
+
+Frontend con
+Ingreso de club administrador, donde se ve la gestión del club. 
+Ingresó como socio de club para autogestión.
+
+Escribir código base, estructura de carpetas, esquema de base de datos, archivos de testing, documentación, dejar archivo docker para ejecutar de forma local, preparar commit para deployar en Vercel el frontend y backend.
+La base de datos estaria gestionada posiblemente en Dreamhost. 
+
+Enfocarse en un código atómico, limpio, comentado y optimizado
+
