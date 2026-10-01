@@ -1,0 +1,14 @@
+{
+  "name": "gestion-socios",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "forwardPorts": [3000],
+  "portsAttributes": { "3000": { "label": "App", "onAutoForward": "openBrowser" } },
+  "postCreateCommand": "cp -n .env.example .env; npm install && npx prisma db push && npm run db:seed",
+  "customizations": {
+    "vscode": {
+      "extensions": ["Prisma.prisma", "bradlc.vscode-tailwindcss", "vitest.explorer"]
+    }
+  }
+}

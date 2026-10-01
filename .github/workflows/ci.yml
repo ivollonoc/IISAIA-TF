@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gestion_socios
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gestion_socios
+      NEXTAUTH_SECRET: ci-secret
+      DEMO_LOGIN: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx prisma db push
+      - run: npm run db:seed
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

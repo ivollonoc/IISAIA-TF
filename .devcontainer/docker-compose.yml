@@ -1,0 +1,22 @@
+# Entorno de GitHub Codespaces: Node 22 + Postgres 16.
+# `app` comparte red con `db`, así que Postgres queda en localhost:5432.
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    network_mode: service:db
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gestion_socios
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

@@ -1,0 +1,127 @@
+// Esquema multi-tenant: toda entidad de negocio lleva clubId y
+// todas las consultas de la app filtran por él (ver src/server/*).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  SUPERADMIN
+  ADMIN_CLUB
+  SOCIO
+}
+
+enum MedioPago {
+  EFECTIVO
+  TRANSFERENCIA
+  OTRO
+}
+
+model Club {
+  id            String        @id @default(cuid())
+  nombre        String
+  slug          String        @unique
+  createdAt     DateTime      @default(now())
+  usuarios      Usuario[]
+  tiposSocio    TipoSocio[]
+  socios        Socio[]
+  pagos         Pago[]
+  actividades   Actividad[]
+  inscripciones Inscripcion[]
+}
+
+// Cuenta de login. En v1 un email pertenece a un único club.
+model Usuario {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nombre    String?
+  rol       Rol
+  clubId    String?
+  club      Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socio     Socio?
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+}
+
+model TipoSocio {
+  id           String  @id @default(cuid())
+  clubId       String
+  club         Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  nombre       String
+  cuotaMensual Int // pesos enteros
+  socios       Socio[]
+
+  @@unique([clubId, nombre])
+}
+
+model Socio {
+  id            String        @id @default(cuid())
+  clubId        String
+  club          Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  usuarioId     String?       @unique
+  usuario       Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  nroSocio      Int
+  nombre        String
+  apellido      String
+  dni           String
+  email         String?
+  tipoSocioId   String
+  tipoSocio     TipoSocio     @relation(fields: [tipoSocioId], references: [id])
+  activo        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  pagos         Pago[]
+  inscripciones Inscripcion[]
+
+  @@unique([clubId, nroSocio])
+  @@unique([clubId, dni])
+  @@index([clubId])
+}
+
+model Pago {
+  id      String    @id @default(cuid())
+  clubId  String
+  club    Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socioId String
+  socio   Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  periodo String // "YYYY-MM"
+  monto   Int
+  medio   MedioPago
+  fecha   DateTime  @default(now())
+
+  @@unique([socioId, periodo])
+  @@index([clubId, periodo])
+}
+
+model Actividad {
+  id            String        @id @default(cuid())
+  clubId        String
+  club          Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  nombre        String
+  diaSemana     Int // 0 = domingo ... 6 = sábado
+  hora          String // "HH:MM"
+  cupo          Int
+  activa        Boolean       @default(true)
+  inscripciones Inscripcion[]
+
+  @@index([clubId])
+}
+
+model Inscripcion {
+  id          String    @id @default(cuid())
+  clubId      String
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  actividadId String
+  actividad   Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  socioId     String
+  socio       Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([actividadId, socioId])
+  @@index([clubId])
+}
