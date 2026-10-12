@@ -25,7 +25,7 @@ Cada etapa tiene su propio ciclo **spec → plan → implementación** y se cier
 | # | Etapa | Depende de | Spec |
 |---|---|---|---|
 | 0 | Base: migraciones, tests de servicios, modularización | — | [etapa-0](2026-10-12-etapa-0-base-design.md) |
-| 1 | Cuenta corriente + pago simulado | 0 | pendiente |
+| 1 | Cuenta corriente + pago simulado | 0 | [etapa-1](2026-10-12-etapa-1-cuenta-corriente-design.md) |
 | 2 | Calendario de actividades | 0 | pendiente |
 | 3 | Notificaciones (admin general, club, socios) | 1, 2 | pendiente |
 | 4 | Reportes con Tremor (por club y global) | 1, 2 | pendiente |
@@ -37,13 +37,13 @@ Sin cambios de comportamiento. Pasar de `db push` a `prisma migrate` (Neon se re
 
 ### 1 — Cuenta corriente + pago simulado
 
-- Ledger de movimientos por socio: **cargos** (cuota social del período, cuota de actividad) y **pagos** (créditos). Saldo = suma de movimientos.
-- Las actividades pasan a poder tener precio (arancel mensual opcional).
-- El socio ve su cuenta corriente y paga uno o más cargos con un **checkout simulado** (aprobado/rechazado), que acredita en la cuenta corriente del club.
-- El admin ve la cuenta corriente del club y de cada socio; sigue pudiendo registrar pagos manuales.
-- Migración de datos: los `Pago` existentes se convierten en movimientos.
+Diseño cerrado (ver spec). Resumen:
 
-Preguntas abiertas: generación de cargos (automática al inicio de mes vs. al consultar), imputación de pagos parciales, diseño del medio simulado (tarjeta ficticia / "billetera" demo), si el estado "al día" pasa a ser saldo ≤ 0.
+- Tres niveles: cuenta corriente del socio (cargos + pagos), cuenta del club (acreditaciones, derivada de los pagos) y vista de solo lectura del admin general por club + consolidado. La plataforma solo observa (sin liquidaciones ni comisiones por ahora).
+- Cargos de cuota social y de arancel de actividad, generados por botón del admin (idempotente); al inscribirse con el período ya generado se crea el cargo del mes completo; cancelar anula el pendiente.
+- Se pagan cargos completos elegidos, online (pasarela simulada con tarjetas de prueba detrás de la interfaz `Pasarela`; Mercado Pago como esqueleto) o en ventanilla.
+- "Al día" = sin cargos vencidos impagos; día de vencimiento configurable por club (1–28, default 10).
+- Sin migración de datos: Neon solo tiene datos del seed; se rehace el seed con un escenario de demo.
 
 ### 2 — Calendario de actividades
 
