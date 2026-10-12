@@ -56,7 +56,8 @@ model Actividad {
   puntajes    Puntaje[]           // etapa 7
 }
 
-// Un horario por día de la semana como máximo: (actividadId, fecha) sigue identificando una clase.
+// Un día puede tener varios horarios (lunes 9:00 y 17:00): una clase es (actividadId, fecha, hora).
+// ExcepcionClase guarda también la hora original de la clase.
 model HorarioActividad {
   id          String    @id @default(cuid())
   actividadId String    // onDelete: Cascade
@@ -64,7 +65,7 @@ model HorarioActividad {
   hora        String    // "HH:MM"
   duracionMin Int       @default(60)
 
-  @@unique([actividadId, diaSemana])
+  @@unique([actividadId, diaSemana, hora])
 }
 
 model Evento {
@@ -106,7 +107,7 @@ enum ConceptoCargo { CUOTA ACTIVIDAD EVENTO }
 ### Reglas
 
 - **Clases de una actividad** = para cada día del rango entre `fechaInicio` y `fechaFin`, si hay un horario para ese día de la semana. Excepciones igual que en la etapa 2.
-- **Alta/edición de actividad:** nombre (2–60), descripción opcional, 1 a 7 horarios (días distintos), fecha de inicio, fin opcional (≥ inicio), cupo ≥ 1, arancel ≥ 0.
+- **Alta/edición de actividad:** nombre (2–60), descripción opcional, 1 a 28 horarios (sin repetir día y hora), fecha de inicio, fin opcional (≥ inicio), cupo ≥ 1, arancel ≥ 0.
   - Editar el cupo por debajo de los inscriptos actuales: `DomainError("El cupo no puede ser menor a los inscriptos (N)")`.
   - Si cambian horarios o fechas, las excepciones de clases futuras que ya no caen en un horario se **borran** (y se informa cuántas).
   - Cambiar el arancel afecta solo los cargos que se generen desde ahora.
@@ -124,11 +125,11 @@ enum ConceptoCargo { CUOTA ACTIVIDAD EVENTO }
   - **Mes:** el `CalendarioMes` actual.
   - **Lista:** tabla de actividades (días y horarios, vigencia, arancel, inscriptos/cupo, en espera) y de próximos eventos (fecha, inscriptos/cupo, precio).
 - Columna lateral:
-  - **Nuevo** con selector **Actividad | Evento** (`?nuevo=actividad|evento`): el formulario cambia según el tipo. Actividad: 7 checkboxes de días, cada uno con hora y duración. Evento: fecha, hora, duración, lugar, destinatarios, y "Permite inscripción" con cupo y precio.
+  - **Nuevo** con selector **Actividad | Evento** (`?nuevo=actividad|evento`): el formulario cambia según el tipo. Actividad: renglones de horario (día, hora, duración) que se agregan y quitan. Evento: fecha, hora, duración, lugar, destinatarios, y "Permite inscripción" con cupo y precio.
   - **Seleccionado:** clase (suspender/reprogramar/restablecer, como hoy), actividad (editar, desactivar, inscriptos y lista de espera) o evento (detalle, inscriptos, eliminar).
 - Sin JavaScript de cliente salvo lo ya existente; todo por parámetros de URL y server actions.
 
-**Socio — pestaña "Agenda"** (`/c/[slug]/socio/agenda`, reemplaza `socio/calendario`):
+**Socio — pestañas "Actividades y eventos" (`/c/[slug]/socio/actividades`) y "Calendario" (`/c/[slug]/socio/calendario`)** (ajuste pedido en la revisión):
 
 - Vistas Semana/Mes de su calendario (sus actividades y eventos que le corresponden).
 - **"Actividades y eventos del club"**: actividades con días y horarios, y próximos eventos con inscripción; botones Inscribirme / Cancelar / Anotarme en lista de espera / Salir de la lista.
