@@ -8,13 +8,17 @@ App web multi-tenant para que clubes deportivos gestionen socios, cuotas y activ
 - Presentación v1: [docs/presentacion-v1.pptx](docs/presentacion-v1.pptx)
 - Descripción original de la idea: [descripcion-app](descripcion-app)
 
-## Funcionalidades v1
+## Funcionalidades
 
 | Rol | Puede |
 |---|---|
-| Admin general | Crear clubes y asignar su administrador |
-| Admin de club | Tipos de socio y cuotas · alta/modificación/baja de socios · registrar pagos · actividades con cupo · tablero del mes |
-| Socio | Ver estado de cuota e historial de pagos · inscribirse/cancelar actividades (respeta cupo) |
+| Admin general | Crear clubes y asignar su administrador · ver lo cobrado y la deuda vencida de cada club y el consolidado · ver la cuenta de un club en solo lectura |
+| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · actividades con cupo y arancel mensual · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
+| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · inscribirse/cancelar actividades (respeta cupo; las pagas suman su arancel) |
+
+### Pagos online (simulados)
+
+El checkout usa la pasarela configurada en `PASARELA` (por defecto `simulada`). Tarjetas de prueba: `4000 0000 0000 0001` (aprobada) y `4000 0000 0000 0002` (rechazada por fondos insuficientes), con cualquier vencimiento futuro y CVV de 3 dígitos. Nunca se guardan el número completo ni el CVV. La integración con Mercado Pago está preparada (`src/modules/pagos-online/mercadopago.ts`) pero no implementada.
 
 ## Stack
 
@@ -29,7 +33,7 @@ src/
     admin/         panel del admin general
     c/[slug]/      espacio de cada club: /admin y /socio
     api/           API REST + endpoints de NextAuth
-  modules/         un módulo por dominio: clubs, cuotas, socios, actividades
+  modules/         un módulo por dominio: clubs, cuotas, socios, actividades, cuenta-corriente, pagos-online
     <modulo>/      service.ts (lógica; recibe clubId) · schema.ts (Zod) · actions.ts (Server Actions) · components/
   lib/             transversal: auth, sesión, permisos, helpers de validación y de actions, errores
   components/      UI base reutilizable
