@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertTestDb } from "../helpers/guard";
+import { assertTestDb, assertTestEnv } from "../helpers/guard";
 
 describe("assertTestDb (los tests de integración solo tocan bases *_test)", () => {
   it("acepta una base cuyo nombre termina en _test", () => {
@@ -25,5 +25,25 @@ describe("assertTestDb (los tests de integración solo tocan bases *_test)", () 
     expect(() => assertTestDb(undefined)).toThrow(/_test/);
     expect(() => assertTestDb("")).toThrow(/_test/);
     expect(() => assertTestDb("no-es-una-url")).toThrow(/_test/);
+  });
+});
+
+describe("assertTestEnv (ambas URLs de la base de test)", () => {
+  const test = "postgresql://u:p@localhost:5432/gestion_socios_test";
+
+  it("acepta cuando DATABASE_URL y DIRECT_URL son bases *_test", () => {
+    expect(() => assertTestEnv({ DATABASE_URL: test, DIRECT_URL: test })).not.toThrow();
+  });
+
+  it("rechaza un DIRECT_URL que apunta a otra base aunque DATABASE_URL sea de test", () => {
+    expect(() =>
+      assertTestEnv({ DATABASE_URL: test, DIRECT_URL: "postgresql://u:p@localhost:5432/gestion_socios" }),
+    ).toThrow(/DIRECT_URL/);
+  });
+
+  it("rechaza un DATABASE_URL que no es de test", () => {
+    expect(() =>
+      assertTestEnv({ DATABASE_URL: "postgresql://u:p@localhost:5432/gestion_socios", DIRECT_URL: test }),
+    ).toThrow(/DATABASE_URL/);
   });
 });

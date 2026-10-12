@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
 import { testDbEnv } from "./env";
-import { assertTestDb } from "./guard";
+import { assertTestEnv } from "./guard";
 
 /**
  * Una vez por corrida: crea la base de test si no existe, la vacía y aplica todas las
@@ -10,7 +10,7 @@ import { assertTestDb } from "./guard";
  */
 export default async function setup() {
   const env = testDbEnv();
-  assertTestDb(env.DATABASE_URL);
+  assertTestEnv(env);
   const url = new URL(env.DATABASE_URL);
   const nombre = url.pathname.slice(1);
 
