@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
-import { crearClub, listarClubs } from "@/server/clubs";
+import { crearClub, listarClubs } from "@/modules/clubs/service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 

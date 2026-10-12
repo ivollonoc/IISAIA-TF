@@ -2,27 +2,15 @@
 import { z } from "zod";
 import { PERIODO_REGEX } from "./periodo";
 
-const texto = (max: number) => z.string().trim().min(2, "Mínimo 2 caracteres").max(max);
-const entero = (min: number, max: number) => z.coerce.number().int("Debe ser entero").min(min).max(max);
+export const texto = (max: number) => z.string().trim().min(2, "Mínimo 2 caracteres").max(max);
+export const entero = (min: number, max: number) => z.coerce.number().int("Debe ser entero").min(min).max(max);
 
-const emailOpcional = z
+export const emailOpcional = z
   .string()
   .trim()
   .toLowerCase()
   .refine((v) => v === "" || z.string().email().safeParse(v).success, "Email inválido")
   .transform((v) => v || null);
-
-export const clubSchema = z.object({
-  nombre: texto(80),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Slug: minúsculas, números y guiones")
-    .min(3)
-    .max(40),
-  adminEmail: z.string().trim().toLowerCase().email("Email inválido"),
-});
 
 export const tipoSocioSchema = z.object({
   nombre: texto(40),

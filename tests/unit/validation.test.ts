@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { actividadSchema, clubSchema, pagoSchema, socioSchema } from "@/lib/validation";
+import { clubSchema } from "@/modules/clubs/schema";
+import { actividadSchema, pagoSchema, socioSchema } from "@/lib/validation";
 
 describe("clubSchema", () => {
   it("normaliza slug y email a minúsculas", () => {

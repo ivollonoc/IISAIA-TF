@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { requireSuperadmin } from "@/lib/session";
-import { listarClubs } from "@/server/clubs";
+import { listarClubs } from "@/modules/clubs/service";
 import { Aviso, Boton, Campo, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { crearClubAction } from "./actions";
+import { crearClubAction } from "@/modules/clubs/actions";
 
 export default async function AdminGeneralPage({ searchParams }: { searchParams: SearchParams }) {
   await requireSuperadmin();

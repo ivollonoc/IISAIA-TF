@@ -2,7 +2,7 @@
 
 import { ejecutar } from "@/lib/action";
 import { requireSuperadmin } from "@/lib/session";
-import { crearClub } from "@/server/clubs";
+import { crearClub } from "./service";
 
 export async function crearClubAction(formData: FormData) {
   await ejecutar("/admin", async () => {

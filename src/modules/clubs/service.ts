@@ -1,7 +1,7 @@
 // Gestión de clubes (solo SUPERADMIN).
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { clubSchema } from "@/lib/validation";
+import { clubSchema } from "./schema";
 
 export function listarClubs() {
   return db.club.findMany({
