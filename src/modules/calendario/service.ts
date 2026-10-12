@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
 import { armarCalendario, horarioDe, parsearDia } from "./reglas";
-import { eventoSchema, reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
+import { reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
 
 export const MAX_DIAS_RANGO = 42;
 
@@ -98,21 +98,6 @@ export async function restablecerClase(clubId: string, excepcionId: string, hoy:
   await db.excepcionClase.delete({ where: { id: excepcion.id } });
 }
 
-export async function crearEvento(clubId: string, input: unknown, hoy: Date = new Date()) {
-  const data = eventoSchema.parse(input);
-  if (esPasada(data.fecha, hoy)) throw new DomainError("La fecha no puede ser pasada");
-  if (data.actividadId) {
-    const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { id: true } });
-    if (!actividad) throw new DomainError("Actividad no encontrada");
-  }
-  return db.evento.create({ data: { clubId, ...data } });
-}
-
-export async function eliminarEvento(clubId: string, eventoId: string) {
-  const { count } = await db.evento.deleteMany({ where: { id: eventoId, clubId } });
-  if (count === 0) throw new DomainError("Evento no encontrado");
-}
-
 /** Clase elegida en la UI ("<actividadId>:<AAAA-MM-DD>"); null si la clave no es una clase del club. */
 export async function obtenerClase(clubId: string, clave: string) {
   const [actividadId, textoFecha] = clave.split(":");
@@ -126,11 +111,4 @@ export async function obtenerClase(clubId: string, clave: string) {
   if (!actividad || !horario) return null;
   const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha: { actividadId, fecha } } });
   return { actividad, horario, fecha, excepcion };
-}
-
-export function obtenerEvento(clubId: string, eventoId: string) {
-  return db.evento.findFirst({
-    where: { id: eventoId, clubId },
-    include: { actividad: { select: { nombre: true } } },
-  });
 }

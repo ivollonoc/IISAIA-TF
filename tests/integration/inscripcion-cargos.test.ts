@@ -43,6 +43,12 @@ describe("inscribirse a una actividad paga", () => {
     });
   });
 
+  it("un cargo de evento del mes no cuenta como período generado", async () => {
+    await f.crearCargo(club.id, socio.id, { periodo: "2026-10", concepto: "EVENTO", clave: "EVT:x" });
+    const natacion = await f.crearActividad(club.id, { arancel: 5000 });
+    expect((await inscribir(club.id, natacion.id, socio.id, hoy)).cargo).toBeNull();
+  });
+
   it("sin el período generado no crea cargo (lo hará la generación)", async () => {
     const natacion = await f.crearActividad(club.id, { arancel: 5000 });
     const r = await inscribir(club.id, natacion.id, socio.id, hoy);

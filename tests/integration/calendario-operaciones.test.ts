@@ -4,10 +4,7 @@ import type { Club } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   calendarioClub,
-  crearEvento,
-  eliminarEvento,
   obtenerClase,
-  obtenerEvento,
   reprogramarClase,
   restablecerClase,
   suspenderClase,
@@ -127,47 +124,7 @@ describe("restablecerClase", () => {
   });
 });
 
-describe("eventos", () => {
-  it("crea un evento para todo el club (campos opcionales vacíos quedan en null)", async () => {
-    const ev = await crearEvento(
-      club.id,
-      { titulo: "Asamblea anual", fecha: "2026-10-20", hora: "20:00", lugar: "", descripcion: "", actividadId: "" },
-      hoy,
-    );
-    expect(ev).toMatchObject({ titulo: "Asamblea anual", fecha: dia(2026, 10, 20), lugar: null, descripcion: null, actividadId: null });
-  });
-
-  it("crea un evento para los inscriptos de una actividad", async () => {
-    const ev = await crearEvento(
-      club.id,
-      { titulo: "Clínica", fecha: "2026-10-20", hora: "10:00", lugar: "Pileta", actividadId: natacion.id },
-      hoy,
-    );
-    expect(ev).toMatchObject({ actividadId: natacion.id, lugar: "Pileta" });
-  });
-
-  it("rechaza una actividad de otro club y una fecha pasada", async () => {
-    const otro = await f.crearClub();
-    const ajena = await f.crearActividad(otro.id);
-    await expect(
-      crearEvento(club.id, { titulo: "Clínica", fecha: "2026-10-20", hora: "10:00", actividadId: ajena.id }, hoy),
-    ).rejects.toThrow("Actividad no encontrada");
-    await expect(crearEvento(club.id, { titulo: "Viejo", fecha: "2026-10-01", hora: "10:00" }, hoy)).rejects.toThrow(
-      "La fecha no puede ser pasada",
-    );
-  });
-
-  it("elimina un evento del club y rechaza uno de otro club", async () => {
-    const ev = await f.crearEvento(club.id);
-    await eliminarEvento(club.id, ev.id);
-    expect(await db.evento.count()).toBe(0);
-    const otro = await f.crearClub();
-    const ajeno = await f.crearEvento(otro.id);
-    await expect(eliminarEvento(club.id, ajeno.id)).rejects.toThrow("Evento no encontrado");
-  });
-});
-
-describe("obtenerClase / obtenerEvento (selección desde la URL)", () => {
+describe("obtenerClase (selección desde la URL)", () => {
   it("devuelve la clase con su cambio si existe", async () => {
     const e = await suspender();
     const c = await obtenerClase(club.id, `${natacion.id}:2026-10-21`);
@@ -188,12 +145,5 @@ describe("obtenerClase / obtenerEvento (selección desde la URL)", () => {
   it("devuelve null para una actividad inactiva (no ofrece formularios que van a fallar)", async () => {
     const cerrada = await f.crearActividad(club.id, { horarios: [{ diaSemana: 3, hora: "18:00" }], activa: false });
     expect(await obtenerClase(club.id, `${cerrada.id}:2026-10-21`)).toBeNull();
-  });
-
-  it("obtenerEvento solo encuentra eventos del club", async () => {
-    const ev = await f.crearEvento(club.id, { actividadId: natacion.id });
-    expect((await obtenerEvento(club.id, ev.id))?.actividad?.nombre).toBe("Natación");
-    const otro = await f.crearClub();
-    expect(await obtenerEvento(otro.id, ev.id)).toBeNull();
   });
 });

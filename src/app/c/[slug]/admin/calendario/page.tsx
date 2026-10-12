@@ -14,7 +14,8 @@ import { CalendarioMes } from "@/modules/calendario/components/CalendarioMes";
 import { estadoClase } from "@/modules/calendario/components/etiquetas";
 import { NavegacionMes } from "@/modules/calendario/components/NavegacionMes";
 import { claveDia, horaFin, mesDeParam, semanasDelMes, type ItemCalendario } from "@/modules/calendario/reglas";
-import { calendarioClub, obtenerClase, obtenerEvento } from "@/modules/calendario/service";
+import { calendarioClub, obtenerClase } from "@/modules/calendario/service";
+import { obtenerEvento } from "@/modules/calendario/eventos.service";
 import { Aviso, Boton, Campo, Card, Selector, Titulo } from "@/components/ui";
 
 export default async function CalendarioAdminPage({

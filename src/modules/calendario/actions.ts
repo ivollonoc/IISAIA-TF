@@ -4,7 +4,8 @@
 // y vuelve al mes que se estaba viendo, sin selección.
 import { datos, ejecutar, rutaAdmin } from "@/lib/action";
 import { requireClub } from "@/lib/session";
-import { crearEvento, eliminarEvento, reprogramarClase, restablecerClase, suspenderClase } from "./service";
+import { crearEvento, eliminarEvento } from "./eventos.service";
+import { reprogramarClase, restablecerClase, suspenderClase } from "./service";
 
 const rutaCalendario = (slug: string, mes: string) => `${rutaAdmin(slug)}/calendario?mes=${mes}`;
 /** Si la acción sobre una clase falla, se vuelve con la clase seleccionada para corregir el formulario. */

@@ -86,7 +86,8 @@ export async function cargoPorInscripcion(
   let primero = null;
 
   for (const periodo of periodosGenerables(hoy)) {
-    const generado = await tx.cargo.findFirst({ where: { clubId, periodo }, select: { id: true } });
+    // Los cargos de eventos se crean sueltos: no indican que el período se haya generado.
+    const generado = await tx.cargo.findFirst({ where: { clubId, periodo, concepto: { not: "EVENTO" } }, select: { id: true } });
     if (!generado) continue;
 
     const club = await tx.club.findUniqueOrThrow({ where: { id: clubId }, select: { diaVencimiento: true } });
@@ -109,6 +110,55 @@ export async function cargoPorInscripcion(
     primero ??= cargo;
   }
   return primero;
+}
+
+/** Clave de unicidad del cargo de un evento pago. */
+export const claveEvento = (eventoId: string) => `EVT:${eventoId}`;
+
+const dos = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Al inscribirse a un evento pago: crea un cargo único del período actual que vence el día del
+ * evento, o reactiva el anulado por una baja anterior. Si ya lo había pagado, no se vuelve a cobrar.
+ */
+export async function cargoPorEvento(
+  tx: Prisma.TransactionClient,
+  clubId: string,
+  socioId: string,
+  evento: { id: string; titulo: string; precio: number; fecha: Date },
+  hoy: Date = new Date(),
+) {
+  if (evento.precio <= 0) return null;
+  const clave = claveEvento(evento.id);
+  const existente = await tx.cargo.findFirst({ where: { clubId, socioId, clave } });
+  if (existente?.estado === "PAGADO" || existente?.estado === "PENDIENTE") return null;
+  if (existente) {
+    return tx.cargo.update({
+      where: { id: existente.id },
+      data: { estado: "PENDIENTE", monto: evento.precio, motivoAnulacion: null },
+    });
+  }
+  const fecha = `${dos(evento.fecha.getUTCDate())}/${dos(evento.fecha.getUTCMonth() + 1)}`;
+  return tx.cargo.create({
+    data: {
+      clubId, socioId, concepto: "EVENTO", clave, descripcion: `${evento.titulo} (${fecha})`,
+      periodo: periodoActual(hoy), monto: evento.precio, vencimiento: evento.fecha,
+    },
+  });
+}
+
+/** Anula los cargos pendientes de un evento (de un socio o, sin socioId, de todos). */
+export async function anularCargosEvento(
+  tx: Prisma.TransactionClient,
+  clubId: string,
+  eventoId: string,
+  motivo: string,
+  socioId?: string,
+) {
+  await tx.cargo.updateMany({
+    where: { clubId, clave: claveEvento(eventoId), estado: "PENDIENTE", ...(socioId ? { socioId } : {}) },
+    data: { estado: "ANULADO", motivoAnulacion: motivo },
+  });
 }
 
 /**
