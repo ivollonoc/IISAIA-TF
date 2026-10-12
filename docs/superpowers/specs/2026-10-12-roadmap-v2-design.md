@@ -33,7 +33,7 @@ Cada etapa tiene su propio ciclo **spec → plan → implementación** y se cier
 
 ### 0 — Base
 
-Sin cambios de comportamiento. Pasar de `db push` a `prisma migrate` (con baseline en Neon), sumar tests de integración de servicios contra Postgres real y reorganizar el código en `src/modules/<dominio>`. Detalle en su spec.
+Sin cambios de comportamiento. Pasar de `db push` a `prisma migrate` (Neon se recrea desde migraciones + seed; usa `directUrl` para migrar), sumar tests de integración de servicios contra Postgres real y reorganizar el código en `src/modules/<dominio>`. Detalle en su spec.
 
 ### 1 — Cuenta corriente + pago simulado
 

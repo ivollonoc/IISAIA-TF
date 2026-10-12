@@ -34,10 +34,17 @@ Pasos:
    - `.devcontainer/devcontainer.json` (`postCreateCommand`)
    - `docker-compose.yml` (`command` del servicio `app`)
    - `README.md` (opción C y sección Deploy)
-4. **Baseline en Neon** (paso manual, único delicado): las tablas ya existen, así que se marca `0_init` como aplicada sin ejecutarla:
-   `DATABASE_URL=<neon> npx prisma migrate resolve --applied 0_init`
-   y se verifica con `npx prisma migrate status` (sin pendientes). Documentado en el README.
-5. Bases locales existentes creadas con `db push`: se recrean (`prisma migrate reset`) o se les aplica el mismo baseline. Documentado en el README.
+4. **`directUrl` en el datasource:** `directUrl = env("DIRECT_URL")`. La app usa `DATABASE_URL` (en Neon, la URL con pooler, adecuada para serverless) y `prisma migrate` usa `DIRECT_URL` (conexión directa, sin PgBouncer, que necesita para sus advisory locks). En local, CI, devcontainer y docker ambas apuntan a la misma base; se agrega `DIRECT_URL` a `.env.example`, `ci.yml`, `docker-compose.yml` y a las variables de Vercel.
+5. **Reset de Neon (sin baseline).** Neon solo tiene datos del seed; lo cargado después es descartable (decisión 2026-10-12). En lugar de marcar `0_init` como aplicada, se recrea la base desde las migraciones. Paso manual, único y documentado en el README:
+   ```bash
+   DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate reset --force --skip-seed
+   DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npm run db:seed
+   DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate status   # "Database schema is up to date"
+   ```
+   - Las URLs de Neon se pasan **en línea** en el comando, nunca en `.env`: el `.env` local apunta siempre a `localhost`, así un `migrate dev`/`reset` olvidado no puede tocar producción.
+   - Se usa la URL **directa** (host sin `-pooler`).
+   - Opcional: crear antes un branch de Neon como respaldo del estado previo.
+6. Bases locales existentes creadas con `db push`: se recrean con `npx prisma migrate reset` (+ `npm run db:seed`). Documentado en el README.
 
 **Vercel:** no se ejecuta `migrate deploy` en el build, porque los deploys de preview comparten `DATABASE_URL` con producción y migrarían prod desde cualquier rama. Se mantiene el paso explícito `npm run db:deploy`. Se automatiza cuando existan bases por ambiente.
 
@@ -113,7 +120,7 @@ Reglas:
 ## Criterios de terminado
 
 1. `npm run typecheck`, `npm run test:unit` y `npm run test:int` en verde local y en CI; `npm run build` ok.
-2. `prisma migrate status` sin pendientes en Neon (baseline aplicado).
+2. Neon recreado desde migraciones + seed; `prisma migrate status` sin pendientes.
 3. El código de negocio vive en `src/modules/*`; `src/server/` eliminado.
 4. Flujo manual de demo de la propuesta funciona igual: admin general crea club → admin de club carga tipo, socio y pago → socio se inscribe hasta agotar cupo.
 5. Sin cambios visuales.
@@ -122,7 +129,8 @@ Reglas:
 
 | Riesgo | Mitigación |
 |---|---|
-| Baseline mal aplicado en Neon | `migrate diff` entre Neon y el esquema antes del `resolve` (debe estar vacío); el paso se hace manualmente y se verifica con `migrate status` |
+| Un `migrate dev`/`reset` apunta a Neon por error | `.env` local solo con `localhost`; las URLs de Neon se pasan en línea y únicamente en el paso manual documentado |
+| `migrate` colgado o con errores intermitentes en Neon | `DIRECT_URL` sin pooler para migraciones |
 | Tests truncan una base que no es de test | guard por sufijo `_test` en el setup |
 | Tests de integración lentos o inestables | ejecución serial, `resetDb` por test, factories sin dependencia del seed |
 | Mover archivos rompe imports | modularización después de tener los tests; typecheck + build en cada commit |
