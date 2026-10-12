@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { requireClub } from "@/lib/session";
-import { listarSocios } from "@/server/socios";
+import { listarSocios } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { Aviso, Badge, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { crearSocioAction } from "../actions";
-import { SocioForm } from "./SocioForm";
+import { crearSocioAction } from "@/modules/socios/actions";
+import { SocioForm } from "@/modules/socios/components/SocioForm";
 
 export default async function SociosPage({
   params,

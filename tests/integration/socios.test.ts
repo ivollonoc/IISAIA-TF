@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Club, TipoSocio } from "@prisma/client";
 import { db } from "@/lib/db";
 import { periodoActual } from "@/lib/periodo";
-import { actualizarSocio, cambiarEstadoSocio, crearSocio, listarSocios, obtenerSocio } from "@/server/socios";
+import { actualizarSocio, cambiarEstadoSocio, crearSocio, listarSocios, obtenerSocio } from "@/modules/socios/service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 

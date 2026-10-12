@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { periodoActual } from "@/lib/periodo";
-import { socioSchema, type SocioInput } from "@/lib/validation";
+import { socioSchema, type SocioInput } from "./schema";
 
 export function listarSocios(clubId: string) {
   return db.socio.findMany({

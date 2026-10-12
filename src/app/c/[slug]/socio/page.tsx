@@ -1,5 +1,5 @@
 import { requireClub } from "@/lib/session";
-import { obtenerSocio } from "@/server/socios";
+import { obtenerSocio } from "@/modules/socios/service";
 import { actividadesParaSocio } from "@/server/actividades";
 import { estaAlDia, periodoActual } from "@/lib/periodo";
 import { DIAS, formatFecha, formatPesos } from "@/lib/format";

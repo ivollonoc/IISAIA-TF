@@ -1,5 +1,5 @@
 import { apiClub, json, manejar } from "@/lib/api";
-import { crearSocio, listarSocios } from "@/server/socios";
+import { crearSocio, listarSocios } from "@/modules/socios/service";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
