@@ -48,7 +48,7 @@ export default async function SocioHomePage({
 
         <div className="lg:col-span-2">
           <Card title="Actividades">
-            <Tabla headers={["Actividad", "Horario", "Cupo", ""]}>
+            <Tabla headers={["Actividad", "Horario", "Arancel", "Cupo", ""]}>
               {actividades.map((a) => {
                 const lleno = a.inscriptos >= a.cupo;
                 return (
@@ -57,6 +57,7 @@ export default async function SocioHomePage({
                     <td className="py-2 pr-4">
                       {DIAS[a.diaSemana]} {a.hora}
                     </td>
+                    <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
                     <td className="py-2 pr-4">
                       {a.inscriptos} / {a.cupo}
                     </td>

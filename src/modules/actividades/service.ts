@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { actividadSchema } from "./schema";
+import { anularPorCancelacion, cargoPorInscripcion } from "@/modules/cuenta-corriente/cargos.service";
 
 export function listarActividades(clubId: string) {
   return db.actividad.findMany({
@@ -17,10 +18,11 @@ export function crearActividad(clubId: string, input: unknown) {
 }
 
 /**
- * Inscribe al socio respetando el cupo. La transacción serializable evita
- * que dos inscripciones simultáneas superen el cupo.
+ * Inscribe al socio respetando el cupo y, si la actividad es paga y el período ya se generó,
+ * le carga el arancel del mes. La transacción serializable evita que dos inscripciones
+ * simultáneas superen el cupo.
  */
-export async function inscribir(clubId: string, actividadId: string, socioId: string) {
+export async function inscribir(clubId: string, actividadId: string, socioId: string, hoy: Date = new Date()) {
   return db.$transaction(
     async (tx) => {
       const actividad = await tx.actividad.findFirst({
@@ -38,15 +40,20 @@ export async function inscribir(clubId: string, actividadId: string, socioId: st
       if (yaInscripto) throw new DomainError("Ya estás inscripto en esta actividad");
       if (actividad._count.inscripciones >= actividad.cupo) throw new DomainError("No hay cupo disponible");
 
-      return tx.inscripcion.create({ data: { clubId, actividadId, socioId } });
+      const inscripcion = await tx.inscripcion.create({ data: { clubId, actividadId, socioId } });
+      const cargo = await cargoPorInscripcion(tx, clubId, socioId, actividad, hoy);
+      return { ...inscripcion, cargo: cargo && { id: cargo.id, monto: cargo.monto } };
     },
     { isolationLevel: "Serializable" },
   );
 }
 
-export async function cancelarInscripcion(clubId: string, actividadId: string, socioId: string) {
-  const { count } = await db.inscripcion.deleteMany({ where: { clubId, actividadId, socioId } });
-  if (count === 0) throw new DomainError("No estabas inscripto");
+export async function cancelarInscripcion(clubId: string, actividadId: string, socioId: string, hoy: Date = new Date()) {
+  await db.$transaction(async (tx) => {
+    const { count } = await tx.inscripcion.deleteMany({ where: { clubId, actividadId, socioId } });
+    if (count === 0) throw new DomainError("No estabas inscripto");
+    await anularPorCancelacion(tx, clubId, socioId, actividadId, hoy);
+  });
 }
 
 /** Vista del socio: actividades del club marcando en cuáles está inscripto. */

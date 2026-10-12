@@ -42,6 +42,12 @@ describe("actividadSchema", () => {
     expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "25:00", cupo: 15 }).success).toBe(false);
     expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 0 }).success).toBe(false);
   });
+
+  it("el arancel es opcional (gratuita), se convierte desde texto y no puede ser negativo", () => {
+    expect(actividadSchema.parse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 }).arancel).toBe(0);
+    expect(actividadSchema.parse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: "5000" }).arancel).toBe(5000);
+    expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: -1 }).success).toBe(false);
+  });
 });
 
 describe("configClubSchema", () => {
