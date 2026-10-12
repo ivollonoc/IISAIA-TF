@@ -60,9 +60,10 @@ export function parsearDia(texto: string): Date | null {
 
 export const claveDia = (fecha: Date) => fecha.toISOString().slice(0, 10);
 
-/** Mes a mostrar: el del parámetro ?mes=YYYY-MM si es válido; si no, el actual. */
+/** Mes a mostrar: el del parámetro ?mes=YYYY-MM si es válido (años 2000–2100); si no, el actual. */
 export function mesDeParam(param: string | undefined, hoy: Date = new Date()): string {
-  return param && PERIODO_REGEX.test(param) ? param : periodoActual(hoy);
+  const anio = Number(param?.slice(0, 4));
+  return param && PERIODO_REGEX.test(param) && anio >= 2000 && anio <= 2100 ? param : periodoActual(hoy);
 }
 
 /** Fechas de la regla semanal dentro de [desde, hasta], sin clases anteriores a la creación. */

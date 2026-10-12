@@ -168,6 +168,11 @@ describe("obtenerClase / obtenerEvento (selección desde la URL)", () => {
     expect(await obtenerClase(club.id, "sin-separador")).toBeNull();
   });
 
+  it("devuelve null para una actividad inactiva (no ofrece formularios que van a fallar)", async () => {
+    const cerrada = await f.crearActividad(club.id, { diaSemana: 3, activa: false, createdAt: dia(2026, 1, 1) });
+    expect(await obtenerClase(club.id, `${cerrada.id}:2026-10-21`)).toBeNull();
+  });
+
   it("obtenerEvento solo encuentra eventos del club", async () => {
     const ev = await f.crearEvento(club.id, { actividadId: natacion.id });
     expect((await obtenerEvento(club.id, ev.id))?.actividad?.nombre).toBe("Natación");

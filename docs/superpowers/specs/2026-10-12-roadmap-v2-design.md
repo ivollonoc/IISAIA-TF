@@ -22,14 +22,14 @@ Iterar la v1 (gestión de socios multi-tenant) hacia una v2 más completa, mante
 
 Cada etapa tiene su propio ciclo **spec → plan → implementación** y se cierra con tests en verde y la demo funcionando.
 
-| # | Etapa | Depende de | Spec |
-|---|---|---|---|
-| 0 | Base: migraciones, tests de servicios, modularización | — | [etapa-0](2026-10-12-etapa-0-base-design.md) |
-| 1 | Cuenta corriente + pago simulado | 0 | [etapa-1](2026-10-12-etapa-1-cuenta-corriente-design.md) |
-| 2 | Calendario de actividades | 0 | [etapa-2](2026-10-12-etapa-2-calendario-design.md) |
-| 3 | Notificaciones (admin general, club, socios) | 1, 2 | pendiente |
-| 4 | Reportes con Tremor (por club y global) | 1, 2 | pendiente |
-| 5 | Subdominio por club (detrás de flag) | 0 | pendiente |
+| # | Etapa | Depende de | Spec | Estado |
+|---|---|---|---|---|
+| 0 | Base: migraciones, tests de servicios, modularización | — | [etapa-0](2026-10-12-etapa-0-base-design.md) | ✅ Cerrada (rama `mvp2`) |
+| 1 | Cuenta corriente + pago simulado | 0 | [etapa-1](2026-10-12-etapa-1-cuenta-corriente-design.md) | ✅ Cerrada (rama `mvp2`) |
+| 2 | Calendario de actividades | 0 | [etapa-2](2026-10-12-etapa-2-calendario-design.md) | ✅ Cerrada (rama `mvp2`) |
+| 3 | Notificaciones (admin general, club, socios) | 1, 2 | pendiente | Siguiente |
+| 4 | Reportes con Tremor (por club y global) | 1, 2 | pendiente | — |
+| 5 | Subdominio por club (detrás de flag) | 0 | pendiente | — |
 
 ### 0 — Base
 
@@ -84,3 +84,16 @@ Preguntas abiertas: export CSV, rangos de fechas, si los agregados se calculan e
 4. Reportes con Tremor (variante compatible con Tailwind 4).
 5. Tests de integración contra Postgres real (no Prisma mockeado).
 6. Se mantienen la estética (`src/components/ui.tsx`) y los patrones existentes (`ejecutar`, `requireClub`, `apiClub`, servicios que reciben `clubId`).
+
+## Estado de integración
+
+Al 2026-10-12, las etapas 0–2 están en la rama `mvp2` (sin mergear a `main`). Para publicarlas:
+
+1. `npm run build` y la demo de cada etapa en local.
+2. Neon: reset desde migraciones (ver README, "Pasaje a migraciones"): `0_init`, `cuenta_corriente`, `calendario`, `actividad_creada`, `actividad_creada_backfill`; luego `db:seed`.
+3. Vercel: `DIRECT_URL` y `PASARELA="simulada"` (el Ignored Build Step para ramas distintas de `main` ya está configurado).
+4. PR de `mvp2` a `main` → deploy. Probar después de las 21 h (zona horaria).
+
+### Pendientes conocidos de la etapa 2 (no bloqueantes)
+
+Casos que el spec no define y quedaron con el comportamiento actual: no se puede restablecer una clase reprogramada cuya fecha original ya pasó; una reprogramación puede superponerse con otra clase; los eventos de actividades desactivadas siguen visibles; se acepta reprogramar a hoy en una hora ya pasada.

@@ -1,6 +1,6 @@
 // Textos de un ítem del calendario: corto para la grilla y completo para la agenda.
 import { formatDiaCorto } from "@/lib/format";
-import type { ItemCalendario } from "../reglas";
+import { claveDia, type ItemCalendario } from "../reglas";
 
 export function etiquetaItem(item: ItemCalendario): string {
   const base = `${item.hora} ${item.titulo}`;
@@ -20,4 +20,19 @@ export function detalleItem(item: ItemCalendario): string {
     return `${base} · Reprogramada desde ${formatDiaCorto(item.fechaOriginal)}: ${item.motivo}`;
   if (item.lugar) return `${base} · ${item.lugar}`;
   return base;
+}
+
+/** Clave única de un ítem dentro de un día (para las listas de React). */
+export function claveItem(item: ItemCalendario): string {
+  const origen = item.excepcionId ?? (item.fechaOriginal ? claveDia(item.fechaOriginal) : "");
+  return [item.tipo, item.actividadId ?? item.eventoId, item.estado, item.hora, origen].join("|");
+}
+
+/** Estado de la clase seleccionada en el panel del admin. */
+export function estadoClase(
+  excepcion: { tipo: "SUSPENDIDA" | "REPROGRAMADA"; motivo: string; nuevaFecha: Date | null; nuevaHora: string | null } | null,
+): string {
+  if (!excepcion) return "Estado: normal";
+  if (excepcion.tipo === "SUSPENDIDA") return `Suspendida: ${excepcion.motivo}`;
+  return `Reprogramada al ${formatDiaCorto(excepcion.nuevaFecha!)} ${excepcion.nuevaHora}: ${excepcion.motivo}`;
 }

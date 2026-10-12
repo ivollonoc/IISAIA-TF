@@ -11,6 +11,7 @@ import {
   suspenderClaseAction,
 } from "@/modules/calendario/actions";
 import { CalendarioMes } from "@/modules/calendario/components/CalendarioMes";
+import { estadoClase } from "@/modules/calendario/components/etiquetas";
 import { NavegacionMes } from "@/modules/calendario/components/NavegacionMes";
 import { claveDia, horaFin, mesDeParam, semanasDelMes, type ItemCalendario } from "@/modules/calendario/reglas";
 import { calendarioClub, obtenerClase, obtenerEvento } from "@/modules/calendario/service";
@@ -63,13 +64,10 @@ export default async function CalendarioAdminPage({
                 <strong>{clase.actividad.nombre}</strong> · {formatDiaCorto(clase.fecha)} · {clase.actividad.hora}–
                 {horaFin(clase.actividad.hora, clase.actividad.duracionMin)}
               </p>
+              {!clase.excepcion && <p className="mt-1 text-sm text-slate-500">{estadoClase(null)}</p>}
               {clase.excepcion ? (
                 <div className="mt-3 flex flex-col gap-3 text-sm">
-                  <p className="text-slate-600">
-                    {clase.excepcion.tipo === "SUSPENDIDA"
-                      ? `Suspendida: ${clase.excepcion.motivo}`
-                      : `Reprogramada al ${formatDiaCorto(clase.excepcion.nuevaFecha!)} ${clase.excepcion.nuevaHora}: ${clase.excepcion.motivo}`}
-                  </p>
+                  <p className="text-slate-600">{estadoClase(clase.excepcion)}</p>
                   {!clasePasada && (
                     <form action={restablecerClaseAction.bind(null, slug, periodo, clase.excepcion.id)}>
                       <Boton variante="secundario">Restablecer</Boton>

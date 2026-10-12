@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatDiaCorto } from "@/lib/format";
 import { claveDia, type ItemCalendario } from "../reglas";
-import { detalleItem } from "./etiquetas";
+import { claveItem, detalleItem } from "./etiquetas";
 
 export const estiloItem: Record<string, string> = {
   NORMAL: "text-slate-700",
@@ -33,7 +33,7 @@ export function AgendaLista({
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{formatDiaCorto(delDia[0].fecha)}</p>
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {delDia.map((i) => (
-              <li key={`${i.tipo}-${i.actividadId ?? i.eventoId}-${i.estado}-${i.hora}`} className={claseDeItem(i)}>
+              <li key={claveItem(i)} className={claseDeItem(i)}>
                 {hrefItem ? (
                   <Link href={hrefItem(i)} className="hover:underline">
                     {detalleItem(i)}

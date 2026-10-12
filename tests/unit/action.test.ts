@@ -36,4 +36,13 @@ describe("ejecutar", () => {
     );
     expect(revalidatePath).toHaveBeenLastCalledWith("/c/demo/admin/calendario");
   });
+
+  it("con rutaError, un error vuelve a esa ruta (p. ej. con la clase seleccionada) y el éxito a la normal", async () => {
+    await expect(
+      ejecutar("/cal?mes=2026-10", async () => { throw new DomainError("Motivo corto"); }, "/cal?mes=2026-10&clase=a:2026-10-21"),
+    ).rejects.toThrow(/^REDIRECT:\/cal\?mes=2026-10&clase=a:2026-10-21&error=Motivo%20corto&f=[\w-]+$/);
+    await expect(ejecutar("/cal?mes=2026-10", async () => "Listo", "/cal?mes=2026-10&clase=x")).rejects.toThrow(
+      /^REDIRECT:\/cal\?mes=2026-10&ok=Listo&f=[\w-]+$/,
+    );
+  });
 });

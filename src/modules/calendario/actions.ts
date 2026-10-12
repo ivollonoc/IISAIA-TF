@@ -7,13 +7,16 @@ import { requireClub } from "@/lib/session";
 import { crearEvento, eliminarEvento, reprogramarClase, restablecerClase, suspenderClase } from "./service";
 
 const rutaCalendario = (slug: string, mes: string) => `${rutaAdmin(slug)}/calendario?mes=${mes}`;
+/** Si la acción sobre una clase falla, se vuelve con la clase seleccionada para corregir el formulario. */
+const conClase = (slug: string, mes: string, actividadId: string, fecha: string) =>
+  `${rutaCalendario(slug, mes)}&clase=${actividadId}:${fecha}`;
 
 export async function suspenderClaseAction(slug: string, mes: string, actividadId: string, fecha: string, formData: FormData) {
   await ejecutar(rutaCalendario(slug, mes), async () => {
     const { club } = await requireClub(slug, "admin");
     await suspenderClase(club.id, { ...datos(formData), actividadId, fecha });
     return "Clase suspendida";
-  });
+  }, conClase(slug, mes, actividadId, fecha));
 }
 
 export async function reprogramarClaseAction(slug: string, mes: string, actividadId: string, fecha: string, formData: FormData) {
@@ -21,7 +24,7 @@ export async function reprogramarClaseAction(slug: string, mes: string, activida
     const { club } = await requireClub(slug, "admin");
     await reprogramarClase(club.id, { ...datos(formData), actividadId, fecha });
     return "Clase reprogramada";
-  });
+  }, conClase(slug, mes, actividadId, fecha));
 }
 
 export async function restablecerClaseAction(slug: string, mes: string, excepcionId: string) {

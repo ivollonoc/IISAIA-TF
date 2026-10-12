@@ -116,7 +116,7 @@ export async function obtenerClase(clubId: string, clave: string) {
   const [actividadId, textoFecha] = clave.split(":");
   const fecha = textoFecha ? parsearDia(textoFecha) : null;
   if (!actividadId || !fecha) return null;
-  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId } });
+  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId, activa: true } });
   if (!actividad || clasesEnRango(actividad, fecha, fecha).length === 0) return null;
   const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha: { actividadId, fecha } } });
   return { actividad, fecha, excepcion };

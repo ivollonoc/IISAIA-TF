@@ -11,7 +11,7 @@ import {
   type EventoCalendario,
   type ExcepcionCalendario,
 } from "@/modules/calendario/reglas";
-import { detalleItem, etiquetaItem } from "@/modules/calendario/components/etiquetas";
+import { claveItem, detalleItem, estadoClase, etiquetaItem } from "@/modules/calendario/components/etiquetas";
 
 const dia = (a: number, m: number, d: number) => new Date(Date.UTC(a, m - 1, d));
 const desdeSiempre = dia(2026, 1, 1);
@@ -34,6 +34,8 @@ describe("parsearDia / claveDia / mesDeParam", () => {
     expect(mesDeParam("2026-11", hoy)).toBe("2026-11");
     expect(mesDeParam("2026-13", hoy)).toBe("2026-10");
     expect(mesDeParam(undefined, hoy)).toBe("2026-10");
+    expect(mesDeParam("0050-01", hoy)).toBe("2026-10");
+    expect(mesDeParam("2101-01", hoy)).toBe("2026-10");
   });
 });
 
@@ -209,5 +211,22 @@ describe("etiquetas", () => {
     expect(
       detalleItem({ tipo: "EVENTO", fecha: dia(2026, 10, 14), hora: "18:00", titulo: "Asamblea", estado: "NORMAL", lugar: "Sede" }),
     ).toBe("18:00 Asamblea · Sede");
+  });
+});
+
+describe("claveItem / estadoClase", () => {
+  it("dos clases de la misma actividad reprogramadas al mismo día y hora tienen claves distintas", () => {
+    const comun = { tipo: "CLASE" as const, fecha: dia(2026, 10, 16), hora: "20:00", titulo: "Natación", estado: "REPROGRAMADA" as const, actividadId: "nat" };
+    const a = claveItem({ ...comun, excepcionId: "e1", fechaOriginal: dia(2026, 10, 7) });
+    const b = claveItem({ ...comun, excepcionId: "e2", fechaOriginal: dia(2026, 10, 14) });
+    expect(a).not.toBe(b);
+  });
+
+  it("describe el estado de la clase seleccionada, incluido el normal", () => {
+    expect(estadoClase(null)).toBe("Estado: normal");
+    expect(estadoClase({ tipo: "SUSPENDIDA", motivo: "Feriado", nuevaFecha: null, nuevaHora: null })).toBe("Suspendida: Feriado");
+    expect(
+      estadoClase({ tipo: "REPROGRAMADA", motivo: "Lluvia", nuevaFecha: dia(2026, 10, 16), nuevaHora: "20:00" }),
+    ).toBe("Reprogramada al Vie 16/10 20:00: Lluvia");
   });
 });

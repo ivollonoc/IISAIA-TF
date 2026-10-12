@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { claveDia, semanasDelMes, type ItemCalendario } from "../reglas";
 import { AgendaLista, claseDeItem } from "./AgendaLista";
-import { detalleItem, etiquetaItem } from "./etiquetas";
+import { claveItem, detalleItem, etiquetaItem } from "./etiquetas";
 
 const CABECERA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -42,7 +42,7 @@ export function CalendarioMes({
                   <ul className="mt-1 flex flex-col gap-0.5 text-xs">
                     {(porDia.get(clave) ?? []).map((i) => (
                       <li
-                        key={`${i.tipo}-${i.actividadId ?? i.eventoId}-${i.estado}-${i.hora}`}
+                        key={claveItem(i)}
                         className={`truncate ${claseDeItem(i)}`}
                         title={detalleItem(i)}
                       >
