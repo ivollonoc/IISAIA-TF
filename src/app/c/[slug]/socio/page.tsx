@@ -9,6 +9,9 @@ import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/c
 import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
 import { BotonPagarSeleccion } from "@/modules/cuenta-corriente/components/BotonPagarSeleccion";
 import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
+import { DIA_MS, inicioDelDia } from "@/lib/periodo";
+import { AgendaLista } from "@/modules/calendario/components/AgendaLista";
+import { calendarioSocio } from "@/modules/calendario/service";
 
 export default async function SocioHomePage({
   params,
@@ -19,10 +22,12 @@ export default async function SocioHomePage({
 }) {
   const { slug } = await params;
   const { club, user } = await requireClub(slug, "socio");
-  const [socio, actividades, cuenta, msg] = await Promise.all([
+  const hoy = inicioDelDia();
+  const [socio, actividades, cuenta, agenda, msg] = await Promise.all([
     obtenerSocio(club.id, user.socioId!),
     actividadesParaSocio(club.id, user.socioId!),
     cuentaSocio(club.id, user.socioId!),
+    calendarioSocio(club.id, user.socioId!, hoy, new Date(hoy.getTime() + 6 * DIA_MS)),
     searchParams,
   ]);
 
@@ -89,6 +94,15 @@ export default async function SocioHomePage({
                 );
               })}
             </Tabla>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-3">
+          <Card title="Próximos 7 días">
+            <AgendaLista items={agenda} vacio="No tenés clases ni eventos en los próximos 7 días." />
+            <Link href={`/c/${slug}/socio/calendario`} className="mt-4 inline-block text-sm text-emerald-700 underline">
+              Ver calendario
+            </Link>
           </Card>
         </div>
 
