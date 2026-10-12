@@ -1,10 +1,10 @@
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
-import { actividadesParaSocio } from "@/server/actividades";
+import { actividadesParaSocio } from "@/modules/actividades/service";
 import { estaAlDia, periodoActual } from "@/lib/periodo";
 import { DIAS, formatFecha, formatPesos } from "@/lib/format";
 import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { cancelarAction, inscribirAction } from "./actions";
+import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
 
 export default async function SocioHomePage({
   params,

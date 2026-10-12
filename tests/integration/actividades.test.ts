@@ -9,7 +9,7 @@ import {
   crearActividad,
   inscribir,
   listarActividades,
-} from "@/server/actividades";
+} from "@/modules/actividades/service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 

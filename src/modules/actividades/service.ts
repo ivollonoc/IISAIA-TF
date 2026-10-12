@@ -1,7 +1,7 @@
 // Actividades con cupo e inscripciones de socios.
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { actividadSchema } from "@/lib/validation";
+import { actividadSchema } from "./schema";
 
 export function listarActividades(clubId: string) {
   return db.actividad.findMany({

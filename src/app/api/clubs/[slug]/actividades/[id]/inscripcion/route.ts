@@ -1,5 +1,5 @@
 import { apiClub, json, manejar } from "@/lib/api";
-import { cancelarInscripcion, inscribir } from "@/server/actividades";
+import { cancelarInscripcion, inscribir } from "@/modules/actividades/service";
 
 type Ctx = { params: Promise<{ slug: string; id: string }> };
 

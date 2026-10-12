@@ -1,8 +1,8 @@
 import { requireClub } from "@/lib/session";
-import { listarActividades } from "@/server/actividades";
+import { listarActividades } from "@/modules/actividades/service";
 import { DIAS } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Selector, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { crearActividadAction } from "../actions";
+import { crearActividadAction } from "@/modules/actividades/actions";
 
 export default async function ActividadesPage({
   params,

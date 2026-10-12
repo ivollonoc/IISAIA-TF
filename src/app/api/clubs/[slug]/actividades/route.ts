@@ -1,5 +1,5 @@
 import { apiClub, json } from "@/lib/api";
-import { listarActividades } from "@/server/actividades";
+import { listarActividades } from "@/modules/actividades/service";
 
 /** GET /api/clubs/:slug/actividades — actividades con cantidad de inscriptos (admin o socio). */
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
