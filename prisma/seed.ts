@@ -60,11 +60,19 @@ async function main() {
       data: { clubId: club.id, nombre, cupo, arancel, fechaInicio: demo.creadas, horarios: { create: horarios } },
     });
   const futbol = await actividad("Fútbol infantil", 20, 6000, [{ diaSemana: 1, hora: "18:00" }]);
-  const natacion = await actividad("Natación", 2, 5000, [{ diaSemana: 3, hora: "19:00" }]);
-  await actividad("Yoga", 15, 0, [{ diaSemana: 6, hora: "10:00" }]);
+  const natacion = await actividad("Natación", 2, 5000, [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 3, hora: "19:00" }]);
+  // Yoga gratis y lleno (Martín y Valentina): Lucía espera un lugar.
+  const yoga = await actividad("Yoga", 2, 0, [
+    { diaSemana: 2, hora: "10:00" },
+    { diaSemana: 4, hora: "10:00" },
+  ]);
 
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: sofia.id } });
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: natacion.id, socioId: lucia.id } });
+  for (const s of [martin, valentina]) {
+    await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: yoga.id, socioId: s.id } });
+  }
+  await prisma.listaEspera.create({ data: { clubId: club.id, actividadId: yoga.id, socioId: lucia.id } });
 
   // Cargos de dos meses, como los generaría el botón "Generar cargos".
   for (const periodo of [anterior, actual]) {
@@ -115,8 +123,9 @@ async function main() {
     },
   });
 
-  // Calendario (ver calendarioDemo): Fútbol suspendido esta semana y reprogramado la siguiente;
-  // un evento para todo el club y otro solo para Natación, dentro de los próximos 7 días.
+  // Agenda (ver calendarioDemo): Fútbol suspendido esta semana y reprogramado la siguiente; un
+  // evento informativo para todo el club y una clínica gratis con cupo solo para Natación, dentro de
+  // los próximos 7 días; y una cena paga para todo el club, sin cupo, más adelante.
   const hoyDia = inicioDelDia();
   await prisma.excepcionClase.create({
     data: { clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.suspendida, tipo: "SUSPENDIDA", motivo: "Feriado" },
@@ -136,7 +145,14 @@ async function main() {
   await prisma.evento.create({
     data: {
       clubId: club.id, titulo: "Clínica de natación", fecha: new Date(hoyDia.getTime() + 5 * DIA_MS), hora: "10:00",
-      lugar: "Pileta", actividadId: natacion.id,
+      duracionMin: 120, lugar: "Pileta", actividadId: natacion.id, conInscripcion: true, cupo: 10,
+    },
+  });
+  await prisma.evento.create({
+    data: {
+      clubId: club.id, titulo: "Cena anual", fecha: new Date(hoyDia.getTime() + 12 * DIA_MS), hora: "21:00",
+      duracionMin: 180, lugar: "Sede social", descripcion: "Cena de fin de temporada con show en vivo",
+      conInscripcion: true, precio: 15000,
     },
   });
 

@@ -13,8 +13,8 @@ App web multi-tenant para que clubes deportivos gestionen socios, cuotas y activ
 | Rol | Puede |
 |---|---|
 | Admin general | Crear clubes y asignar su administrador · ver lo cobrado y la deuda vencida de cada club y el consolidado · ver la cuenta de un club en solo lectura |
-| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · actividades con cupo y arancel mensual · calendario: suspender o reprogramar clases y publicar eventos · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
-| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · inscribirse/cancelar actividades (respeta cupo; las pagas suman su arancel) · ver su calendario y los próximos 7 días |
+| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · **Agenda** (vistas semana, mes y lista): actividades recurrentes con uno o más días por semana, vigencia, cupo y arancel mensual; eventos puntuales informativos o con inscripción (cupo y precio opcionales); suspender o reprogramar clases; ver inscriptos y lista de espera · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
+| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · **Agenda**: sus clases y eventos (semana o mes), inscribirse/cancelar actividades y eventos (respeta cupo; los pagos suman su cargo) y anotarse en la lista de espera de los llenos · próximos 7 días en su inicio |
 
 ### Pagos online (simulados)
 
@@ -89,6 +89,8 @@ El esquema se versiona con `prisma migrate` (carpeta `prisma/migrations`).
 | socio@demo.club | Socio del club "demo" |
 
 El seed deja cargos de dos meses (uno vencido y otro por vencer): Juan figura moroso y Lucía (`socio@demo.club`) tiene deuda por vencer para probar el pago online. Por eso "Generar cargos" del mes en curso puede informar 0 cargos nuevos: ya existen.
+
+En la Agenda: Natación (lunes y miércoles, cupo 2, Lucía inscripta), Fútbol infantil (lunes, con una clase suspendida esta semana y otra reprogramada la siguiente) y Yoga (martes y jueves, gratis, lleno, con Lucía en lista de espera); una asamblea informativa, una clínica de natación gratis con cupo y una cena anual paga ($15.000).
 
 ## API REST
 
