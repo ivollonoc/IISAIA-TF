@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { inicioDelDia } from "@/lib/periodo";
 import { anularCargosEvento, cargoPorEvento } from "@/modules/cuenta-corriente/cargos.service";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { eventoSchema } from "./schema";
 
 const esPasada = (fecha: Date, hoy: Date) => fecha.getTime() < inicioDelDia(hoy).getTime();
@@ -17,16 +18,22 @@ export async function crearEvento(clubId: string, input: unknown, hoy: Date = ne
     const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { id: true } });
     if (!actividad) throw new DomainError("Actividad no encontrada");
   }
-  return db.evento.create({ data: { clubId, ...data } });
+  const evento = await db.evento.create({ data: { clubId, ...data } });
+  await notificar(clubId, { tipo: "EVENTO_NUEVO", eventoId: evento.id });
+  return evento;
 }
 
 /** Elimina el evento; los cargos pendientes de sus inscriptos se anulan (lo pagado queda). */
 export async function eliminarEvento(clubId: string, eventoId: string) {
-  await db.$transaction(async (tx) => {
-    const evento = await tx.evento.findFirst({ where: { id: eventoId, clubId }, select: { id: true } });
-    if (!evento) throw new DomainError("Evento no encontrado");
+  const evento = await db.$transaction(async (tx) => {
+    const e = await tx.evento.findFirst({ where: { id: eventoId, clubId } });
+    if (!e) throw new DomainError("Evento no encontrado");
     await anularCargosEvento(tx, clubId, eventoId, "Evento cancelado");
     await tx.evento.delete({ where: { id: eventoId } });
+    return e;
+  });
+  await notificar(clubId, {
+    tipo: "EVENTO_CANCELADO", titulo: evento.titulo, fecha: evento.fecha, hora: evento.hora, actividadId: evento.actividadId,
   });
 }
 
@@ -86,7 +93,7 @@ export async function inscribirEvento(clubId: string, eventoId: string, socioId:
 
 /** Cancela la inscripción y anula el cargo pendiente. `liberado`: el evento tenía cupo y estaba lleno. */
 export async function cancelarInscripcionEvento(clubId: string, eventoId: string, socioId: string, hoy: Date = new Date()) {
-  return db.$transaction(async (tx) => {
+  const r = await db.$transaction(async (tx) => {
     const evento = await tx.evento.findFirst({
       where: { id: eventoId, clubId },
       include: { _count: { select: { inscripciones: true } } },
@@ -98,6 +105,8 @@ export async function cancelarInscripcionEvento(clubId: string, eventoId: string
     await anularCargosEvento(tx, clubId, eventoId, "Baja del evento", socioId);
     return { liberado: evento.cupo !== null && evento._count.inscripciones >= evento.cupo };
   });
+  if (r.liberado) await notificar(clubId, { tipo: "LUGAR_LIBERADO", eventoId });
+  return r;
 }
 
 /** Próximos eventos que le corresponden al socio, marcando inscripción y lista de espera. */

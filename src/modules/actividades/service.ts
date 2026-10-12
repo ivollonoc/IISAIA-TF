@@ -4,6 +4,7 @@ import { DomainError } from "@/lib/errors";
 import { inicioDelDia } from "@/lib/periodo";
 import { horarioDe } from "@/modules/calendario/reglas";
 import { anularPorCancelacion, cargoPorInscripcion } from "@/modules/cuenta-corriente/cargos.service";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { actividadSchema } from "./schema";
 
 const conHorarios = { horarios: { orderBy: { diaSemana: "asc" as const } } };
@@ -29,7 +30,9 @@ export async function obtenerActividad(clubId: string, actividadId: string) {
 
 export async function crearActividad(clubId: string, input: unknown) {
   const { horarios, ...data } = actividadSchema.parse(input);
-  return db.actividad.create({ data: { ...data, clubId, horarios: { create: horarios } } });
+  const actividad = await db.actividad.create({ data: { ...data, clubId, horarios: { create: horarios } } });
+  await notificar(clubId, { tipo: "ACTIVIDAD_NUEVA", actividadId: actividad.id });
+  return actividad;
 }
 
 /**
@@ -39,10 +42,10 @@ export async function crearActividad(clubId: string, input: unknown) {
  */
 export async function editarActividad(clubId: string, actividadId: string, input: unknown, hoy: Date = new Date()) {
   const { horarios, ...data } = actividadSchema.parse(input);
-  return db.$transaction(async (tx) => {
+  const r = await db.$transaction(async (tx) => {
     const actual = await tx.actividad.findFirst({
       where: { id: actividadId, clubId },
-      include: { _count: { select: { inscripciones: true } } },
+      include: { horarios: true, _count: { select: { inscripciones: true, listaEspera: true } } },
     });
     if (!actual) throw new DomainError("Actividad no encontrada");
     if (data.cupo < actual._count.inscripciones) {
@@ -56,8 +59,20 @@ export async function editarActividad(clubId: string, actividadId: string, input
     const futuras = await tx.excepcionClase.findMany({ where: { actividadId, fecha: { gte: inicioDelDia(hoy) } } });
     const huerfanas = futuras.filter((e) => !horarioDe(vigencia, e.fecha, e.hora)).map((e) => e.id);
     if (huerfanas.length) await tx.excepcionClase.deleteMany({ where: { id: { in: huerfanas } } });
-    return { excepcionesBorradas: huerfanas.length };
+
+    const firma = (hs: { diaSemana: number; hora: string; duracionMin: number }[]) =>
+      hs.map((h) => `${h.diaSemana}|${h.hora}|${h.duracionMin}`).sort().join(",");
+    const cambioAgenda =
+      firma(actual.horarios) !== firma(horarios) ||
+      actual.fechaInicio.getTime() !== data.fechaInicio.getTime() ||
+      (actual.fechaFin?.getTime() ?? null) !== (data.fechaFin?.getTime() ?? null);
+    const inscriptos = actual._count.inscripciones;
+    const seLiberoLugar = actual._count.listaEspera > 0 && inscriptos >= actual.cupo && data.cupo > inscriptos;
+    return { excepcionesBorradas: huerfanas.length, cambioAgenda, seLiberoLugar };
   });
+  if (r.cambioAgenda) await notificar(clubId, { tipo: "ACTIVIDAD_EDITADA", actividadId });
+  if (r.seLiberoLugar) await notificar(clubId, { tipo: "LUGAR_LIBERADO", actividadId });
+  return { excepcionesBorradas: r.excepcionesBorradas };
 }
 
 export async function cambiarEstadoActividad(clubId: string, actividadId: string, activa: boolean) {
@@ -100,7 +115,7 @@ export async function inscribir(clubId: string, actividadId: string, socioId: st
 
 /** Cancela la inscripción y anula el arancel pendiente. `liberado`: la actividad estaba llena. */
 export async function cancelarInscripcion(clubId: string, actividadId: string, socioId: string, hoy: Date = new Date()) {
-  return db.$transaction(async (tx) => {
+  const r = await db.$transaction(async (tx) => {
     const actividad = await tx.actividad.findFirst({
       where: { id: actividadId, clubId },
       select: { cupo: true, _count: { select: { inscripciones: true } } },
@@ -110,6 +125,8 @@ export async function cancelarInscripcion(clubId: string, actividadId: string, s
     await anularPorCancelacion(tx, clubId, socioId, actividadId, hoy);
     return { liberado: actividad._count.inscripciones >= actividad.cupo };
   });
+  if (r.liberado) await notificar(clubId, { tipo: "LUGAR_LIBERADO", actividadId });
+  return r;
 }
 
 /** Vista del socio: actividades activas y vigentes, marcando inscripción y lista de espera. */

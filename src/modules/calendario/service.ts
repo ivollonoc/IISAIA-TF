@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
 import { armarCalendario, horarioDe, parsearDia } from "./reglas";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
 
 export const MAX_DIAS_RANGO = 42;
@@ -74,9 +75,11 @@ async function guardarExcepcion(data: Prisma.ExcepcionClaseUncheckedCreateInput)
 export async function suspenderClase(clubId: string, input: unknown, hoy: Date = new Date()) {
   const data = suspenderClaseSchema.parse(input);
   await claseModificable(clubId, data.actividadId, data.fecha, data.hora, hoy);
-  return guardarExcepcion({
+  const excepcion = await guardarExcepcion({
     clubId, actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, tipo: "SUSPENDIDA", motivo: data.motivo,
   });
+  await notificar(clubId, { tipo: "CLASE_SUSPENDIDA", actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, motivo: data.motivo });
+  return excepcion;
 }
 
 export async function reprogramarClase(clubId: string, input: unknown, hoy: Date = new Date()) {
@@ -86,10 +89,15 @@ export async function reprogramarClase(clubId: string, input: unknown, hoy: Date
   if (data.nuevaFecha.getTime() === data.fecha.getTime() && data.nuevaHora === horario.hora) {
     throw new DomainError("Elegí una fecha u hora distinta");
   }
-  return guardarExcepcion({
+  const excepcion = await guardarExcepcion({
     clubId, actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, tipo: "REPROGRAMADA",
     nuevaFecha: data.nuevaFecha, nuevaHora: data.nuevaHora, motivo: data.motivo,
   });
+  await notificar(clubId, {
+    tipo: "CLASE_REPROGRAMADA", actividadId: data.actividadId, fecha: data.fecha, hora: data.hora,
+    nuevaFecha: data.nuevaFecha, nuevaHora: data.nuevaHora, motivo: data.motivo,
+  });
+  return excepcion;
 }
 
 /** Deshace una suspensión o reprogramación: la clase vuelve a la regla. */
@@ -98,6 +106,7 @@ export async function restablecerClase(clubId: string, excepcionId: string, hoy:
   if (!excepcion) throw new DomainError("Cambio no encontrado");
   if (esPasada(excepcion.fecha, hoy)) throw new DomainError("No se pueden modificar clases pasadas");
   await db.excepcionClase.delete({ where: { id: excepcion.id } });
+  await notificar(clubId, { tipo: "CLASE_RESTABLECIDA", actividadId: excepcion.actividadId, fecha: excepcion.fecha, hora: excepcion.hora });
 }
 
 /** Clave de una clase en la URL: "<actividadId>:<AAAA-MM-DD>:<HH:MM>". */

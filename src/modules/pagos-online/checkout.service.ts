@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { DomainError, mensajeDeError } from "@/lib/errors";
 import { registrarPago } from "@/modules/cuenta-corriente/pagos.service";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { getPasarela } from "./index";
 import type { Pasarela, ResultadoPasarela } from "./pasarela";
 import { tarjetaSchema } from "./schema";
@@ -84,6 +85,7 @@ export async function pagarOnline(
       });
       return p;
     });
+    await notificar(clubId, { tipo: "PAGO_ACREDITADO", socioId, monto: pago.monto });
     return { estado: "APROBADO", intentoId: intento.id, pagoId: pago.id };
   } catch (e) {
     const motivo = mensajeDeError(e);

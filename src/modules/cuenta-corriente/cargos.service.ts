@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { periodoActual } from "@/lib/periodo";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { periodosGenerables, vencimiento } from "./reglas";
 import { anularCargoSchema, generarCargosSchema } from "./schema";
 
@@ -51,7 +52,23 @@ export async function generarCargosPeriodo(clubId: string, input: unknown, hoy: 
     }
   }
 
+  // Los que ya existían antes de esta corrida no se vuelven a avisar.
+  const previos = await db.cargo.findMany({ where: { clubId, periodo }, select: { id: true } });
   const { count } = filas.length ? await db.cargo.createMany({ data: filas, skipDuplicates: true }) : { count: 0 };
+
+  if (count > 0) {
+    const nuevos = await db.cargo.findMany({
+      where: { clubId, periodo, id: { notIn: previos.map((c) => c.id) } },
+      select: { socioId: true, monto: true, vencimiento: true },
+    });
+    const porSocio = new Map<string, { socioId: string; monto: number; vencimiento: Date }>();
+    for (const c of nuevos) {
+      const s = porSocio.get(c.socioId) ?? { socioId: c.socioId, monto: 0, vencimiento: c.vencimiento };
+      s.monto += c.monto;
+      porSocio.set(c.socioId, s);
+    }
+    await notificar(clubId, { tipo: "CARGOS_GENERADOS", periodo, socios: [...porSocio.values()] });
+  }
   return { creados: count, existentes: filas.length - count };
 }
 

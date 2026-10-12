@@ -2,6 +2,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
+import { notificar } from "@/modules/notificaciones/emitir";
 import { registrarPagoSchema } from "./schema";
 
 /**
@@ -36,5 +37,9 @@ export async function registrarPago(clubId: string, input: unknown, tx?: Prisma.
     return pago;
   };
 
-  return tx ? registrar(tx) : db.$transaction(registrar);
+  // Dentro de una transacción ajena, avisa quien la abrió (después de confirmarla).
+  if (tx) return registrar(tx);
+  const pago = await db.$transaction(registrar);
+  await notificar(clubId, { tipo: "PAGO_ACREDITADO", socioId: pago.socioId, monto: pago.monto });
+  return pago;
 }
