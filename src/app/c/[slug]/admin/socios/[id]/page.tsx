@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
@@ -31,7 +32,7 @@ export default async function SocioDetallePage({
       <Titulo sub={`Socio N° ${socio.nroSocio} · ${socio.activo ? "Activo" : "Dado de baja"}`}>
         {socio.apellido}, {socio.nombre}
       </Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Datos">
           <SocioForm action={actualizarSocioAction.bind(null, slug, socio.id)} tipos={tipos} socio={socio} />

@@ -67,7 +67,7 @@ export function Badge({ ok, children }: { ok: boolean; children: ReactNode }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${color}`}>{children}</span>;
 }
 
-/** Muestra el resultado del último Server Action (?ok / ?error). */
+/** Muestra el resultado del último Server Action; recibe lo que devuelve leerAviso (lib/aviso). */
 export function Aviso({ error, ok }: { error?: string; ok?: string }) {
   if (error) return <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>;
   if (ok) return <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{ok === "1" ? "Cambios guardados" : ok}</p>;
@@ -96,4 +96,4 @@ export function Stat({ label, valor }: { label: string; valor: ReactNode }) {
   );
 }
 
-export type SearchParams = Promise<{ error?: string; ok?: string }>;
+export type SearchParams = Promise<{ error?: string; ok?: string; f?: string }>;

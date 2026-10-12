@@ -1,9 +1,10 @@
 // Datos de demo. Idempotente: borra todo y vuelve a crear.
-// Escenario: cargos del mes anterior y del actual; Martín y Valentina al día, Lucía y Sofía con
-// deuda por vencer, Juan moroso (no pagó el mes anterior). Pagos en efectivo, transferencia y online.
+// Escenario: cargos de dos meses (uno ya vencido y otro por vencer, ver escenario-demo.ts);
+// Martín y Valentina al día, Lucía y Sofía con deuda por vencer, Juan moroso (no pagó el vencido).
+// Pagos en efectivo, transferencia y online.
 import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
-import { periodoActual } from "../src/lib/periodo";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
+import { escenarioDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
 
@@ -11,12 +12,8 @@ async function main() {
   await prisma.club.deleteMany();
   await prisma.usuario.deleteMany();
 
-  const hoy = new Date();
-  const actual = periodoActual(hoy);
-  const anterior = periodoActual(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 15));
-  // Vencimiento una semana adelante para que los cargos del mes estén "por vencer" en la demo
-  // (desde el día 22 queda en 28, el máximo permitido).
-  const diaVencimiento = Math.min(28, hoy.getDate() + 7);
+  // anterior = período ya vencido, actual = período por vencer (nombres del caso habitual).
+  const { vencido: anterior, porVencer: actual, diaVencimiento } = escenarioDemo();
 
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });

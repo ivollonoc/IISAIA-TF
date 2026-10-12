@@ -23,7 +23,13 @@ export function MovimientosTabla({
           {seleccion && (
             <td className="py-2 pr-2">
               {m.tipo === "CARGO" && m.estado === "PENDIENTE" && (
-                <input type="checkbox" name={seleccion} value={m.id} aria-label={`Seleccionar ${m.concepto}`} />
+                <input
+                  type="checkbox"
+                  name={seleccion}
+                  value={m.id}
+                  data-monto={m.monto}
+                  aria-label={`Seleccionar ${m.concepto}`}
+                />
               )}
             </td>
           )}

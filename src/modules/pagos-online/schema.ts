@@ -21,3 +21,12 @@ export const tarjetaSchema = z.object({
   cvv: z.string().trim().regex(/^\d{3,4}$/, "CVV: 3 o 4 dígitos"),
   titular: texto(60),
 });
+
+/** Ids de cargos del parámetro ?cargos del checkout: acepta parámetros repetidos y separados por coma. */
+export function parsearCargos(param: string | string[] | undefined): string[] {
+  return ([] as string[])
+    .concat(param ?? [])
+    .flatMap((v) => v.split(","))
+    .map((v) => v.trim())
+    .filter(Boolean);
+}

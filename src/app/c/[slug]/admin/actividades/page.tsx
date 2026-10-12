@@ -1,3 +1,4 @@
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { listarActividades } from "@/modules/actividades/service";
 import { DIAS, formatPesos } from "@/lib/format";
@@ -18,7 +19,7 @@ export default async function ActividadesPage({
   return (
     <>
       <Titulo sub="Calendario semanal con cupos y aranceles">Actividades</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>

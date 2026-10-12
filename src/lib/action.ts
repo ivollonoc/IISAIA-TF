@@ -1,11 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { queryAviso } from "./aviso";
 import { mensajeDeError } from "./errors";
 
 /**
  * Envuelve un Server Action: ejecuta, revalida y vuelve a `ruta` con ?ok=<mensaje> (o ?ok=1 si la
- * acción no devuelve un texto) o ?error=<mensaje>. Errores inesperados (y los redirect de los
- * guards) se relanzan.
+ * acción no devuelve un texto) o ?error=<mensaje>, firmados (ver aviso.ts). Errores inesperados
+ * (y los redirect de los guards) se relanzan.
  */
 export async function ejecutar(ruta: string, fn: () => Promise<unknown>): Promise<never> {
   let error: string | null = null;
@@ -18,7 +19,7 @@ export async function ejecutar(ruta: string, fn: () => Promise<unknown>): Promis
     if (error === null) throw e;
   }
   revalidatePath(ruta);
-  redirect(error ? `${ruta}?error=${encodeURIComponent(error)}` : `${ruta}?ok=${encodeURIComponent(ok)}`);
+  redirect(`${ruta}?${error ? queryAviso("error", error) : queryAviso("ok", ok)}`);
 }
 
 /** Ruta base del área de administración de un club. */

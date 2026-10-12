@@ -6,6 +6,7 @@ import { datos, ejecutar, rutaAdmin } from "@/lib/action";
 import { requireClub } from "@/lib/session";
 import { anularCargo, generarCargosPeriodo } from "./cargos.service";
 import { registrarPago } from "./pagos.service";
+import { medioVentanillaSchema } from "./schema";
 
 /** Pago en ventanilla de los cargos tildados (checkboxes "cargoIds"). */
 export async function registrarPagoAction(slug: string, socioId: string, formData: FormData) {
@@ -14,7 +15,7 @@ export async function registrarPagoAction(slug: string, socioId: string, formDat
     await registrarPago(club.id, {
       socioId,
       cargoIds: formData.getAll("cargoIds").map(String),
-      medio: formData.get("medio"),
+      medio: medioVentanillaSchema.parse(formData.get("medio")),
       registradoPor: user.id,
     });
     return "Pago registrado";

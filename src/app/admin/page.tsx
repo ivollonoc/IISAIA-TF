@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { leerAviso } from "@/lib/aviso";
 import { requireSuperadmin } from "@/lib/session";
 import { listarClubs } from "@/modules/clubs/service";
 import { resumenPlataforma } from "@/modules/cuenta-corriente/consultas.service";
@@ -13,7 +14,7 @@ export default async function AdminGeneralPage({ searchParams }: { searchParams:
   return (
     <>
       <Titulo sub="Clubes afiliados a la plataforma">Admin general</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Stat label={`Cobrado ${resumen.periodo}`} valor={formatPesos(resumen.cobradoMes)} />
         <Stat label="Deuda vencida" valor={formatPesos(resumen.deudaVencida)} />

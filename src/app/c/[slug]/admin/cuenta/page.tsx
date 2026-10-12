@@ -1,3 +1,4 @@
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { cuentaClub } from "@/modules/cuenta-corriente/consultas.service";
 import { periodosGenerables } from "@/modules/cuenta-corriente/reglas";
@@ -20,7 +21,7 @@ export default async function CuentaClubPage({
   return (
     <>
       <Titulo sub="Cobros acreditados y deuda de los socios">Cuenta corriente</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <CuentaClub cuenta={cuenta} />

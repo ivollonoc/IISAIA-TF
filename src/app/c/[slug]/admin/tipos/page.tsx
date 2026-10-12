@@ -1,3 +1,4 @@
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { formatPesos } from "@/lib/format";
@@ -19,7 +20,7 @@ export default async function TiposPage({
   return (
     <>
       <Titulo sub="Categorías de socio, su cuota mensual y el vencimiento">Tipos de socio</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>

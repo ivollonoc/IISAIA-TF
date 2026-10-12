@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { mensajeDeError } from "@/lib/errors";
 import { formatDia, formatPesos } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Tabla, Titulo } from "@/components/ui";
 import { prepararCheckout } from "@/modules/pagos-online/checkout.service";
 import { pagarAction } from "@/modules/pagos-online/actions";
+import { parsearCargos } from "@/modules/pagos-online/schema";
 import { TARJETAS_DE_PRUEBA } from "@/modules/pagos-online/simulada";
 
 export default async function PagarPage({
@@ -12,15 +14,15 @@ export default async function PagarPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ cargos?: string | string[]; error?: string }>;
+  searchParams: Promise<{ cargos?: string | string[]; error?: string; f?: string }>;
 }) {
   const { slug } = await params;
   const { club, user } = await requireClub(slug, "socio");
   const sp = await searchParams;
-  const ids = ([] as string[]).concat(sp.cargos ?? []);
+  const ids = parsearCargos(sp.cargos);
 
   let checkout: Awaited<ReturnType<typeof prepararCheckout>> | null = null;
-  let error = sp.error;
+  let error = leerAviso({ error: sp.error, f: sp.f }).error;
   try {
     checkout = await prepararCheckout(club.id, user.socioId!, ids);
   } catch (e) {

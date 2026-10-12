@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { actividadesParaSocio } from "@/modules/actividades/service";
@@ -6,6 +7,7 @@ import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
 import { DIAS, formatDia, formatPesos } from "@/lib/format";
 import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
+import { BotonPagarSeleccion } from "@/modules/cuenta-corriente/components/BotonPagarSeleccion";
 import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 
 export default async function SocioHomePage({
@@ -28,7 +30,7 @@ export default async function SocioHomePage({
     <>
       <p className="mb-1 text-sm font-medium uppercase tracking-wide text-emerald-700">{club.nombre}</p>
       <Titulo sub={`Socio N° ${socio.nroSocio} · ${socio.tipoSocio.nombre}`}>Hola, {socio.nombre}</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Mi cuenta">
@@ -96,7 +98,7 @@ export default async function SocioHomePage({
               <MovimientosTabla movimientos={cuenta.movimientos} seleccion="cargos" />
               {cuenta.pendientes.length > 0 && (
                 <div>
-                  <Boton type="submit">Pagar los cargos tildados</Boton>
+                  <BotonPagarSeleccion name="cargos" />
                 </div>
               )}
             </form>

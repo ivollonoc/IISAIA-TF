@@ -88,6 +88,8 @@ El esquema se versiona con `prisma migrate` (carpeta `prisma/migrations`).
 | admin@demo.club | Admin del club "demo" |
 | socio@demo.club | Socio del club "demo" |
 
+El seed deja cargos de dos meses (uno vencido y otro por vencer): Juan figura moroso y Lucía (`socio@demo.club`) tiene deuda por vencer para probar el pago online. Por eso "Generar cargos" del mes en curso puede informar 0 cargos nuevos: ya existen.
+
 ## API REST
 
 Autenticada con la sesión JWT de NextAuth.

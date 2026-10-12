@@ -90,6 +90,12 @@ describe("estadoSocios", () => {
     expect(e[sinCargos.id]).toBeUndefined();
     expect(e[ajeno.id]).toBeUndefined();
   });
+
+  it("un socio dado de baja no figura como moroso, pero su deuda se informa", async () => {
+    const baja = await f.crearSocio(club.id, { activo: false });
+    await f.crearCargo(club.id, baja.id, { monto: 7000, vencimiento: utc(2026, 9, 10) });
+    expect((await estadoSocios(club.id, hoy))[baja.id]).toEqual({ deuda: 7000, moroso: false });
+  });
 });
 
 describe("resumenClub", () => {

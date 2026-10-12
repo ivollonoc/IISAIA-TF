@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { listarSocios } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
@@ -27,7 +28,7 @@ export default async function SociosPage({
   return (
     <>
       <Titulo sub="Altas, modificaciones y estado de cuenta">Socios</Titulo>
-      <Aviso {...msg} />
+      <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title={`Padrón (${socios.length})`}>

@@ -20,3 +20,8 @@ export const generarCargosSchema = z.object({
 export const anularCargoSchema = z.object({
   motivo: texto(200),
 });
+
+/** Medios de un pago registrado por el admin en ventanilla (ONLINE solo lo registra el checkout). */
+export const medioVentanillaSchema = z.enum(["EFECTIVO", "TRANSFERENCIA", "OTRO"], {
+  errorMap: () => ({ message: "Medio de pago inválido" }),
+});

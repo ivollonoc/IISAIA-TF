@@ -22,6 +22,11 @@ export function periodoSiguiente(periodo: string): string {
   return mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, "0")}`;
 }
 
+export function periodoAnterior(periodo: string): string {
+  const [anio, mes] = periodo.split("-").map(Number);
+  return mes === 1 ? `${anio - 1}-12` : `${anio}-${String(mes - 1).padStart(2, "0")}`;
+}
+
 /** Períodos para los que se pueden generar cargos: el actual y el siguiente. */
 export function periodosGenerables(hoy: Date = new Date()): [string, string] {
   const actual = periodoActual(hoy);

@@ -55,14 +55,14 @@ export async function cuentaSocio(clubId: string, socioId: string, hoy: Date = n
 
 export type CuentaSocio = Awaited<ReturnType<typeof cuentaSocio>>;
 
-/** Deuda pendiente y morosidad de cada socio del club con cargos pendientes. */
+/** Deuda pendiente de cada socio del club con cargos pendientes; moroso solo si está activo. */
 export async function estadoSocios(clubId: string, hoy: Date = new Date()) {
   const corte = inicioDelDia(hoy);
   const [deudas, vencidos] = await Promise.all([
     db.cargo.groupBy({ by: ["socioId"], where: { clubId, estado: "PENDIENTE" }, _sum: { monto: true } }),
     db.cargo.groupBy({
       by: ["socioId"],
-      where: { clubId, estado: "PENDIENTE", vencimiento: { lt: corte } },
+      where: { clubId, estado: "PENDIENTE", vencimiento: { lt: corte }, socio: { activo: true } },
       _count: { _all: true },
     }),
   ]);
