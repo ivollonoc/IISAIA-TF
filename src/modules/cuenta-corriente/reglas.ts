@@ -1,11 +1,12 @@
 // Reglas puras de cuenta corriente (sin I/O) para poder testearlas aisladas.
-import { PERIODO_REGEX, periodoActual } from "@/lib/periodo";
+import { fechaLocal, OFFSET_UTC_HORAS, PERIODO_REGEX, periodoActual } from "@/lib/periodo";
 
 type EstadoCargoStr = "PENDIENTE" | "PAGADO" | "ANULADO";
 
-/** Medianoche UTC del día calendario local de `fecha`: así se guardan y comparan los vencimientos. */
+/** Medianoche UTC del día calendario de `fecha` en Argentina: así se guardan y comparan los vencimientos. */
 export function inicioDelDia(fecha: Date = new Date()): Date {
-  return new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const { anio, mes, dia } = fechaLocal(fecha);
+  return new Date(Date.UTC(anio, mes - 1, dia));
 }
 
 /** Vencimiento de un período ("YYYY-MM") según el día de vencimiento del club (1..28). */
@@ -27,10 +28,13 @@ export function periodosGenerables(hoy: Date = new Date()): [string, string] {
   return [actual, periodoSiguiente(actual)];
 }
 
-/** Rango de fechas (hora local) del mes de un período: [desde, hasta). */
+/** Instantes del mes de un período en Argentina: [medianoche del día 1, medianoche del 1 del mes siguiente). */
 export function rangoDelMes(periodo: string): { desde: Date; hasta: Date } {
   const [anio, mes] = periodo.split("-").map(Number);
-  return { desde: new Date(anio, mes - 1, 1), hasta: new Date(anio, mes, 1) };
+  return {
+    desde: new Date(Date.UTC(anio, mes - 1, 1, OFFSET_UTC_HORAS)),
+    hasta: new Date(Date.UTC(anio, mes, 1, OFFSET_UTC_HORAS)),
+  };
 }
 
 /** Un cargo pendiente está vencido si su vencimiento es anterior a hoy (el que vence hoy todavía no). */

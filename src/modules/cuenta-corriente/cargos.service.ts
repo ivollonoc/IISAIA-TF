@@ -68,10 +68,11 @@ export async function anularCargo(clubId: string, cargoId: string, input: unknow
 }
 
 /**
- * Al inscribirse a una actividad paga: si el club ya generó los cargos del período actual, crea el
- * cargo del arancel del mes completo (sin prorrateo) o reactiva el anulado por una baja anterior.
- * Si todavía no se generaron, no hace nada: lo incluirá la generación. Corre en la transacción
- * de la inscripción: si falla, no hay inscripción.
+ * Al inscribirse a una actividad paga: por cada período ya generado en el club (el actual y, si el
+ * admin lo adelantó, el siguiente) crea el cargo del arancel del mes completo, sin prorrateo, o
+ * reactiva el anulado por una baja anterior. Los períodos sin generar los cubrirá la generación.
+ * Corre en la transacción de la inscripción: si falla, no hay inscripción. Devuelve el primer
+ * cargo creado o reactivado.
  */
 export async function cargoPorInscripcion(
   tx: Prisma.TransactionClient,
@@ -81,30 +82,40 @@ export async function cargoPorInscripcion(
   hoy: Date = new Date(),
 ) {
   if (actividad.arancel <= 0) return null;
-  const periodo = periodoActual(hoy);
-  const generado = await tx.cargo.findFirst({ where: { clubId, periodo }, select: { id: true } });
-  if (!generado) return null;
-
-  const club = await tx.club.findUniqueOrThrow({ where: { id: clubId }, select: { diaVencimiento: true } });
-  const vence = vencimiento(periodo, club.diaVencimiento);
   const clave = claveActividad(actividad.id);
-  const existente = await tx.cargo.findUnique({ where: { socioId_periodo_clave: { socioId, periodo, clave } } });
-  if (existente?.estado === "ANULADO") {
-    return tx.cargo.update({
-      where: { id: existente.id },
-      data: { estado: "PENDIENTE", monto: actividad.arancel, motivoAnulacion: null },
-    });
+  let primero = null;
+
+  for (const periodo of periodosGenerables(hoy)) {
+    const generado = await tx.cargo.findFirst({ where: { clubId, periodo }, select: { id: true } });
+    if (!generado) continue;
+
+    const club = await tx.club.findUniqueOrThrow({ where: { id: clubId }, select: { diaVencimiento: true } });
+    const vence = vencimiento(periodo, club.diaVencimiento);
+    const existente = await tx.cargo.findUnique({ where: { socioId_periodo_clave: { socioId, periodo, clave } } });
+    let cargo = null;
+    if (existente?.estado === "ANULADO") {
+      cargo = await tx.cargo.update({
+        where: { id: existente.id },
+        data: { estado: "PENDIENTE", monto: actividad.arancel, motivoAnulacion: null },
+      });
+    } else if (!existente) {
+      cargo = await tx.cargo.create({
+        data: {
+          clubId, socioId, concepto: "ACTIVIDAD", actividadId: actividad.id, clave,
+          descripcion: `${actividad.nombre} ${periodo}`, periodo, monto: actividad.arancel, vencimiento: vence,
+        },
+      });
+    }
+    primero ??= cargo;
   }
-  if (existente) return null;
-  return tx.cargo.create({
-    data: {
-      clubId, socioId, concepto: "ACTIVIDAD", actividadId: actividad.id, clave,
-      descripcion: `${actividad.nombre} ${periodo}`, periodo, monto: actividad.arancel, vencimiento: vence,
-    },
-  });
+  return primero;
 }
 
-/** Al cancelar una inscripción: anula el cargo del mes si sigue pendiente (lo pagado no se reintegra). */
+/**
+ * Al cancelar una inscripción: anula los cargos de esa actividad que sigan pendientes del mes en
+ * curso en adelante (el siguiente puede estar generado). Lo pagado no se reintegra y los meses
+ * anteriores no se tocan.
+ */
 export async function anularPorCancelacion(
   tx: Prisma.TransactionClient,
   clubId: string,
@@ -113,7 +124,13 @@ export async function anularPorCancelacion(
   hoy: Date = new Date(),
 ) {
   await tx.cargo.updateMany({
-    where: { clubId, socioId, periodo: periodoActual(hoy), clave: claveActividad(actividadId), estado: "PENDIENTE" },
+    where: {
+      clubId,
+      socioId,
+      periodo: { gte: periodoActual(hoy) },
+      clave: claveActividad(actividadId),
+      estado: "PENDIENTE",
+    },
     data: { estado: "ANULADO", motivoAnulacion: "Baja de actividad" },
   });
 }

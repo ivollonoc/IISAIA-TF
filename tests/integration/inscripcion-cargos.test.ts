@@ -108,3 +108,50 @@ describe("cancelar la inscripción", () => {
     });
   });
 });
+
+describe("con el mes siguiente ya generado", () => {
+  /** El admin ya generó también 2026-11 (permitido: período actual o siguiente). */
+  const siguienteGenerado = async () => {
+    const otro = await f.crearSocio(club.id, { tipoSocioId: tipo.id });
+    await f.crearCargo(club.id, otro.id, { periodo: "2026-11", clave: "CUOTA" });
+  };
+  const cargoNov = (actividadId: string) =>
+    db.cargo.findUnique({ where: { socioId_periodo_clave: { socioId: socio.id, periodo: "2026-11", clave: `ACT:${actividadId}` } } });
+
+  it("inscribirse crea también el cargo del mes siguiente", async () => {
+    await periodoGenerado();
+    await siguienteGenerado();
+    const natacion = await f.crearActividad(club.id, { nombre: "Natación", arancel: 5000 });
+    await inscribir(club.id, natacion.id, socio.id, hoy);
+    expect(await cargoDe(natacion.id)).toMatchObject({ estado: "PENDIENTE", monto: 5000 });
+    expect(await cargoNov(natacion.id)).toMatchObject({
+      estado: "PENDIENTE",
+      monto: 5000,
+      descripcion: "Natación 2026-11",
+      vencimiento: utc(2026, 11, 10),
+    });
+  });
+
+  it("cancelar anula también el cargo pendiente del mes siguiente", async () => {
+    await periodoGenerado();
+    await siguienteGenerado();
+    const natacion = await f.crearActividad(club.id, { arancel: 5000 });
+    await inscribir(club.id, natacion.id, socio.id, hoy);
+    await cancelarInscripcion(club.id, natacion.id, socio.id, hoy);
+    expect((await cargoDe(natacion.id))?.estado).toBe("ANULADO");
+    expect((await cargoNov(natacion.id))?.estado).toBe("ANULADO");
+  });
+
+  it("cancelar no toca cargos de meses anteriores", async () => {
+    const natacion = await f.crearActividad(club.id, { arancel: 5000 });
+    await f.inscribirDirecto(club.id, natacion.id, socio.id);
+    const septiembre = await f.crearCargo(club.id, socio.id, {
+      concepto: "ACTIVIDAD",
+      actividadId: natacion.id,
+      clave: `ACT:${natacion.id}`,
+      periodo: "2026-09",
+    });
+    await cancelarInscripcion(club.id, natacion.id, socio.id, hoy);
+    expect((await db.cargo.findUnique({ where: { id: septiembre.id } }))?.estado).toBe("PENDIENTE");
+  });
+});
