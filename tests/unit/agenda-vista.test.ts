@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hrefAgenda, queryVista, rutaAgenda, vistaDeParams } from "@/modules/calendario/vista";
+import { hrefAgenda, queryVista, rutaAgenda, rutaAgendaSocio, vistaDeParams } from "@/modules/calendario/vista";
 
 const hoy = new Date(Date.UTC(2026, 9, 15, 15)); // jueves 15/10/2026
 
@@ -35,6 +35,10 @@ describe("hrefAgenda / queryVista", () => {
   it("rutaAgenda vuelve a la vista saneada con la selección", () => {
     expect(rutaAgenda("demo", "vista=mes&mes=2026-10&evento=x")).toBe("/c/demo/admin/agenda?vista=mes&mes=2026-10");
     expect(rutaAgenda("demo", "", { clase: "a1:2026-10-21" })).toBe("/c/demo/admin/agenda?clase=a1%3A2026-10-21");
+  });
+
+  it("rutaAgendaSocio vuelve a la agenda del socio en la vista saneada", () => {
+    expect(rutaAgendaSocio("demo", "vista=mes&mes=2026-10&x=1")).toBe("/c/demo/socio/agenda?vista=mes&mes=2026-10");
   });
 
   it("queryVista solo deja pasar vista, semana y mes válidos (el resto se descarta)", () => {

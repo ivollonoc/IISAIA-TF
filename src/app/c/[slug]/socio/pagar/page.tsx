@@ -33,7 +33,6 @@ export default async function PagarPage({
 
   return (
     <>
-      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-emerald-700">{club.nombre}</p>
       <Titulo sub="Pago online con tarjeta">Pagar</Titulo>
       <Aviso error={error} />
       {checkout ? (

@@ -6,8 +6,7 @@ import { actividadesParaSocio } from "@/modules/actividades/service";
 import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
 import { formatDia, formatPesos } from "@/lib/format";
 import { formatHorarios } from "@/modules/calendario/components/etiquetas";
-import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
+import { Aviso, Badge, Card, Titulo, type SearchParams } from "@/components/ui";
 import { BotonPagarSeleccion } from "@/modules/cuenta-corriente/components/BotonPagarSeleccion";
 import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
@@ -23,18 +22,19 @@ export default async function SocioHomePage({
 }) {
   const { slug } = await params;
   const { club, user } = await requireClub(slug, "socio");
-  const hoy = inicioDelDia();
+  const ahora = new Date();
+  const hoy = inicioDelDia(ahora);
   const [socio, actividades, cuenta, agenda, msg] = await Promise.all([
     obtenerSocio(club.id, user.socioId!),
-    actividadesParaSocio(club.id, user.socioId!),
+    actividadesParaSocio(club.id, user.socioId!, ahora),
     cuentaSocio(club.id, user.socioId!),
     calendarioSocio(club.id, user.socioId!, hoy, new Date(hoy.getTime() + 6 * DIA_MS)),
     searchParams,
   ]);
+  const mias = actividades.filter((a) => a.inscripto || a.enEspera);
 
   return (
     <>
-      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-emerald-700">{club.nombre}</p>
       <Titulo sub={`Socio N° ${socio.nroSocio} · ${socio.tipoSocio.nombre}`}>Hola, {socio.nombre}</Titulo>
       <Aviso {...leerAviso(msg)} />
 
@@ -64,45 +64,31 @@ export default async function SocioHomePage({
         </Card>
 
         <div className="lg:col-span-2">
-          <Card title="Actividades">
-            <Tabla headers={["Actividad", "Horario", "Arancel", "Cupo", ""]}>
-              {actividades.map((a) => {
-                const lleno = a.inscriptos >= a.cupo;
-                return (
-                  <tr key={a.id}>
-                    <td className="py-2 pr-4 font-medium">{a.nombre}</td>
-                    <td className="py-2 pr-4">
-                      {formatHorarios(a.horarios)}
-                    </td>
-                    <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
-                    <td className="py-2 pr-4">
-                      {a.inscriptos} / {a.cupo}
-                    </td>
-                    <td className="py-2 text-right">
-                      {a.inscripto ? (
-                        <form action={cancelarAction.bind(null, slug, a.id)}>
-                          <Boton variante="peligro">Cancelar</Boton>
-                        </form>
-                      ) : (
-                        <form action={inscribirAction.bind(null, slug, a.id)}>
-                          <Boton disabled={lleno} className="disabled:opacity-40">
-                            {lleno ? "Sin cupo" : "Inscribirme"}
-                          </Boton>
-                        </form>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </Tabla>
+          <Card title="Próximos 7 días">
+            <AgendaLista items={agenda} vacio="No tenés clases ni eventos en los próximos 7 días." />
+            <Link href={`/c/${slug}/socio/agenda`} className="mt-4 inline-block text-sm text-emerald-700 underline">
+              Ver agenda
+            </Link>
           </Card>
         </div>
 
         <div className="lg:col-span-3">
-          <Card title="Próximos 7 días">
-            <AgendaLista items={agenda} vacio="No tenés clases ni eventos en los próximos 7 días." />
-            <Link href={`/c/${slug}/socio/calendario`} className="mt-4 inline-block text-sm text-emerald-700 underline">
-              Ver calendario
+          <Card title="Mis actividades">
+            {mias.length === 0 ? (
+              <p className="text-sm text-slate-500">Todavía no estás inscripto en ninguna actividad.</p>
+            ) : (
+              <ul className="flex flex-col gap-1 text-sm">
+                {mias.map((a) => (
+                  <li key={a.id}>
+                    <span className="font-medium">{a.nombre}</span>{" "}
+                    <span className="text-slate-600">· {formatHorarios(a.horarios)}</span>
+                    {a.enEspera && <span className="ml-1 text-amber-700">(en lista de espera)</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href={`/c/${slug}/socio/agenda`} className="mt-3 inline-block text-sm text-emerald-700 underline">
+              Ver todas las actividades y eventos
             </Link>
           </Card>
         </div>
