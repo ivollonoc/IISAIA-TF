@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { actividadesParaSocio } from "@/modules/actividades/service";
@@ -43,6 +44,14 @@ export default async function SocioHomePage({
           {cuenta.proximoVencimiento && (
             <p className="text-sm text-slate-600">Próximo vencimiento: {formatDia(cuenta.proximoVencimiento)}</p>
           )}
+          {cuenta.pendientes.length > 0 && (
+            <Link
+              href={`/c/${slug}/socio/pagar?${cuenta.pendientes.map((c) => `cargos=${c.id}`).join("&")}`}
+              className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Pagar {formatPesos(cuenta.deuda)}
+            </Link>
+          )}
           <p className="mt-2 text-sm text-slate-500">Cuota mensual: {formatPesos(socio.tipoSocio.cuotaMensual)}</p>
         </Card>
 
@@ -83,7 +92,14 @@ export default async function SocioHomePage({
 
         <div className="lg:col-span-3">
           <Card title="Cuenta corriente">
-            <MovimientosTabla movimientos={cuenta.movimientos} />
+            <form action={`/c/${slug}/socio/pagar`} method="get" className="flex flex-col gap-4">
+              <MovimientosTabla movimientos={cuenta.movimientos} seleccion="cargos" />
+              {cuenta.pendientes.length > 0 && (
+                <div>
+                  <Boton type="submit">Pagar los cargos tildados</Boton>
+                </div>
+              )}
+            </form>
           </Card>
         </div>
       </div>
