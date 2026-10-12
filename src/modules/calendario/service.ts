@@ -1,8 +1,10 @@
 // Calendario del club: consultas por rango (admin y socio) y operaciones del admin.
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { DIA_MS } from "@/lib/periodo";
-import { armarCalendario } from "./reglas";
+import { DIA_MS, inicioDelDia } from "@/lib/periodo";
+import { armarCalendario, clasesEnRango, parsearDia } from "./reglas";
+import { eventoSchema, reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
 
 export const MAX_DIAS_RANGO = 42;
 
@@ -40,4 +42,89 @@ export async function calendarioSocio(clubId: string, socioId: string, desde: Da
     }),
   ]);
   return armarCalendario({ actividades, excepciones, eventos, desde, hasta });
+}
+
+const esPasada = (fecha: Date, hoy: Date) => fecha.getTime() < inicioDelDia(hoy).getTime();
+
+/** Verifica que (actividad, fecha) sea una clase modificable de la regla y devuelve la actividad. */
+async function claseModificable(clubId: string, actividadId: string, fecha: Date, hoy: Date) {
+  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId, activa: true } });
+  if (!actividad) throw new DomainError("Actividad no encontrada");
+  if (clasesEnRango(actividad, fecha, fecha).length === 0) {
+    throw new DomainError("Esa fecha no corresponde a una clase de la actividad");
+  }
+  if (esPasada(fecha, hoy)) throw new DomainError("No se pueden modificar clases pasadas");
+  return actividad;
+}
+
+/** Crea la excepción; si la clase ya tenía una (UNIQUE actividad+fecha), avisa que hay que restablecerla. */
+async function guardarExcepcion(data: Prisma.ExcepcionClaseUncheckedCreateInput) {
+  try {
+    return await db.excepcionClase.create({ data });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new DomainError("Esa clase ya tiene un cambio: restablecela primero");
+    }
+    throw e;
+  }
+}
+
+export async function suspenderClase(clubId: string, input: unknown, hoy: Date = new Date()) {
+  const data = suspenderClaseSchema.parse(input);
+  await claseModificable(clubId, data.actividadId, data.fecha, hoy);
+  return guardarExcepcion({ clubId, actividadId: data.actividadId, fecha: data.fecha, tipo: "SUSPENDIDA", motivo: data.motivo });
+}
+
+export async function reprogramarClase(clubId: string, input: unknown, hoy: Date = new Date()) {
+  const data = reprogramarClaseSchema.parse(input);
+  const actividad = await claseModificable(clubId, data.actividadId, data.fecha, hoy);
+  if (esPasada(data.nuevaFecha, hoy)) throw new DomainError("La nueva fecha no puede ser pasada");
+  if (data.nuevaFecha.getTime() === data.fecha.getTime() && data.nuevaHora === actividad.hora) {
+    throw new DomainError("Elegí una fecha u hora distinta");
+  }
+  return guardarExcepcion({
+    clubId, actividadId: data.actividadId, fecha: data.fecha, tipo: "REPROGRAMADA",
+    nuevaFecha: data.nuevaFecha, nuevaHora: data.nuevaHora, motivo: data.motivo,
+  });
+}
+
+/** Deshace una suspensión o reprogramación: la clase vuelve a la regla. */
+export async function restablecerClase(clubId: string, excepcionId: string, hoy: Date = new Date()) {
+  const excepcion = await db.excepcionClase.findFirst({ where: { id: excepcionId, clubId } });
+  if (!excepcion) throw new DomainError("Cambio no encontrado");
+  if (esPasada(excepcion.fecha, hoy)) throw new DomainError("No se pueden modificar clases pasadas");
+  await db.excepcionClase.delete({ where: { id: excepcion.id } });
+}
+
+export async function crearEvento(clubId: string, input: unknown, hoy: Date = new Date()) {
+  const data = eventoSchema.parse(input);
+  if (esPasada(data.fecha, hoy)) throw new DomainError("La fecha no puede ser pasada");
+  if (data.actividadId) {
+    const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { id: true } });
+    if (!actividad) throw new DomainError("Actividad no encontrada");
+  }
+  return db.evento.create({ data: { clubId, ...data } });
+}
+
+export async function eliminarEvento(clubId: string, eventoId: string) {
+  const { count } = await db.evento.deleteMany({ where: { id: eventoId, clubId } });
+  if (count === 0) throw new DomainError("Evento no encontrado");
+}
+
+/** Clase elegida en la UI ("<actividadId>:<AAAA-MM-DD>"); null si la clave no es una clase del club. */
+export async function obtenerClase(clubId: string, clave: string) {
+  const [actividadId, textoFecha] = clave.split(":");
+  const fecha = textoFecha ? parsearDia(textoFecha) : null;
+  if (!actividadId || !fecha) return null;
+  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId } });
+  if (!actividad || clasesEnRango(actividad, fecha, fecha).length === 0) return null;
+  const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha: { actividadId, fecha } } });
+  return { actividad, fecha, excepcion };
+}
+
+export function obtenerEvento(clubId: string, eventoId: string) {
+  return db.evento.findFirst({
+    where: { id: eventoId, clubId },
+    include: { actividad: { select: { nombre: true } } },
+  });
 }
