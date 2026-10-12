@@ -30,6 +30,15 @@ export async function eliminarEvento(clubId: string, eventoId: string) {
   });
 }
 
+/** Eventos del club desde hoy, con cantidad de inscriptos y en espera (vista Lista del admin). */
+export function proximosEventosClub(clubId: string, hoy: Date = new Date()) {
+  return db.evento.findMany({
+    where: { clubId, fecha: { gte: inicioDelDia(hoy) } },
+    orderBy: [{ fecha: "asc" }, { hora: "asc" }],
+    include: { actividad: { select: { nombre: true } }, _count: { select: { inscripciones: true, listaEspera: true } } },
+  });
+}
+
 export function obtenerEvento(clubId: string, eventoId: string) {
   return db.evento.findFirst({
     where: { id: eventoId, clubId },

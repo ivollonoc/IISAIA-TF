@@ -9,6 +9,7 @@ import {
   eventosParaSocio,
   inscribirEvento,
   obtenerEvento,
+  proximosEventosClub,
 } from "@/modules/calendario/eventos.service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
@@ -205,6 +206,20 @@ describe("consultas", () => {
     expect(lista.map((e) => [e.titulo, e.inscripto, e.enEspera, e.inscriptos])).toEqual([
       ["Clínica", true, false, 1],
       ["Cena", false, true, 1],
+    ]);
+  });
+
+  it("proximosEventosClub lista los del club desde hoy, con inscriptos y en espera", async () => {
+    const cena = await evento({ titulo: "Cena", fecha: dia(2026, 10, 24), cupo: 1 });
+    await f.inscribirEventoDirecto(club.id, cena.id, (await socio()).id);
+    await f.anotarEsperaDirecto(club.id, (await socio()).id, { eventoId: cena.id });
+    await evento({ titulo: "Hoy", fecha: dia(2026, 10, 15) });
+    await evento({ titulo: "Pasado", fecha: dia(2026, 10, 14) });
+    await f.crearEvento((await f.crearClub()).id, { fecha: dia(2026, 10, 24) });
+    const lista = await proximosEventosClub(club.id, hoy);
+    expect(lista.map((e) => [e.titulo, e._count.inscripciones, e._count.listaEspera])).toEqual([
+      ["Hoy", 0, 0],
+      ["Cena", 1, 1],
     ]);
   });
 
