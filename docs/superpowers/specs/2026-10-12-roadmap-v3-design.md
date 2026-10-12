@@ -1,6 +1,6 @@
 # Roadmap v3 — Agenda, notificaciones, acceso, socios, reportes y subdominios
 
-Fecha: 2026-10-12 · Estado: borrador para revisión · Reemplaza las etapas 3–5 de [roadmap-v2](2026-10-12-roadmap-v2-design.md) · Rama: `mvp3`
+Fecha: 2026-10-12 · Estado: aprobado · Reemplaza las etapas 3–5 de [roadmap-v2](2026-10-12-roadmap-v2-design.md) · Rama: `mvp3`
 
 ## Objetivo
 
@@ -111,7 +111,7 @@ enum ConceptoCargo { CUOTA ACTIVIDAD EVENTO }
   - Si cambian horarios o fechas, las excepciones de clases futuras que ya no caen en un horario se **borran** (y se informa cuántas).
   - Cambiar el arancel afecta solo los cargos que se generen desde ahora.
 - **Inscripción a actividad:** además de lo actual, no se puede inscribir si `fechaFin` ya pasó. Al inscribirse, sale de la lista de espera.
-- **Evento con inscripción:** solo si `conInscripcion`; no se puede inscribir ni cancelar a partir del día del evento. Con `precio > 0` se crea un cargo `EVENTO` (clave `EVT:<eventoId>`, período del día de inscripción, vence el día del evento o, si es antes, el vencimiento del período). Cancelar anula el cargo si está pendiente; lo pagado no se reintegra. Reinscribirse reactiva el anulado.
+- **Evento con inscripción:** solo si `conInscripcion`; no se puede inscribir ni cancelar a partir del día del evento. Con `precio > 0` se crea un cargo `EVENTO` (clave `EVT:<eventoId>`, período del día de inscripción, vence el día del evento). Cancelar anula el cargo si está pendiente; lo pagado no se reintegra. Reinscribirse reactiva el anulado.
 - **Lista de espera:** solo si está lleno y el socio no está inscripto ni en la lista. Se puede salir. Al cancelar una inscripción (actividad o evento) → notificación "Se liberó un lugar" a todos los de la lista (etapa 4; en esta etapa queda el punto de enganche).
 - **Eliminar evento:** si tiene inscriptos con cargos pendientes, se anulan ("Evento cancelado").
 
@@ -297,7 +297,7 @@ model Puntaje {
   clubId      String
   actividadId String  // onDelete: Cascade
   socioId     String  // onDelete: Cascade
-  estrellas   Int     // 1..5
+  medias      Int     // medias estrellas: 1..10 (9 = 4,5 estrellas)
   comentario  String? // hasta 280
   updatedAt   DateTime @updatedAt
   @@unique([actividadId, socioId])
@@ -305,7 +305,7 @@ model Puntaje {
 model Socio { bajaAt DateTime? }  // se setea al dar de baja; altas = createdAt
 ```
 
-Solo puntúa un socio inscripto; puede cambiar su puntaje. En la Agenda del socio, estrellas en cada actividad inscripta; el admin ve promedio y comentarios en el detalle de la actividad.
+Puntaje de 0,5 a 5 estrellas en pasos de media (se guarda en medias para evitar decimales). Solo puntúa un socio inscripto; puede cambiar su puntaje. En la Agenda del socio, estrellas en cada actividad inscripta; el admin ve promedio y comentarios en el detalle de la actividad.
 
 ### Reportes
 
