@@ -1,6 +1,6 @@
 // Validación de entrada del módulo clubs.
 import { z } from "zod";
-import { entero, texto } from "@/lib/validation";
+import { casilla, entero, texto } from "@/lib/validation";
 
 export const clubSchema = z.object({
   nombre: texto(80),
@@ -18,3 +18,8 @@ export const clubSchema = z.object({
 export const configClubSchema = z.object({
   diaVencimiento: entero(1, 28),
 });
+
+/** Vías de aviso a los socios: checkboxes EMAIL y SMS (in-app va siempre). */
+export const canalesSchema = z
+  .object({ EMAIL: casilla, SMS: casilla })
+  .transform(({ EMAIL, SMS }) => ["IN_APP" as const, ...(EMAIL ? ["EMAIL" as const] : []), ...(SMS ? ["SMS" as const] : [])]);

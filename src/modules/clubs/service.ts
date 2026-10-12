@@ -1,7 +1,7 @@
 // Gestión de clubes (solo SUPERADMIN).
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { clubSchema, configClubSchema } from "./schema";
+import { canalesSchema, clubSchema, configClubSchema } from "./schema";
 
 export function listarClubs() {
   return db.club.findMany({
@@ -38,6 +38,11 @@ export async function crearClub(input: unknown) {
 export function actualizarConfigClub(clubId: string, input: unknown) {
   const data = configClubSchema.parse(input);
   return db.club.update({ where: { id: clubId }, data });
+}
+
+/** Vías por las que se avisa a los socios del club (in-app siempre, más mail y/o SMS). */
+export function actualizarCanales(clubId: string, input: unknown) {
+  return db.club.update({ where: { id: clubId }, data: { canales: canalesSchema.parse(input) } });
 }
 
 export function obtenerClubPorSlug(slug: string) {
