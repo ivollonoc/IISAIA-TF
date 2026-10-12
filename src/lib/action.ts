@@ -18,8 +18,9 @@ export async function ejecutar(ruta: string, fn: () => Promise<unknown>): Promis
     error = mensajeDeError(e);
     if (error === null) throw e;
   }
-  revalidatePath(ruta);
-  redirect(`${ruta}?${error ? queryAviso("error", error) : queryAviso("ok", ok)}`);
+  revalidatePath(ruta.split("?")[0]);
+  const separador = ruta.includes("?") ? "&" : "?";
+  redirect(`${ruta}${separador}${error ? queryAviso("error", error) : queryAviso("ok", ok)}`);
 }
 
 /** Ruta base del área de administración de un club. */

@@ -25,3 +25,21 @@ export function periodoActual(fecha: Date = new Date()): string {
   const { anio, mes } = fechaLocal(fecha);
   return `${anio}-${String(mes).padStart(2, "0")}`;
 }
+
+export const DIA_MS = 86_400_000;
+
+/** Medianoche UTC del día calendario de `fecha` en Argentina: así se guardan y comparan los días. */
+export function inicioDelDia(fecha: Date = new Date()): Date {
+  const { anio, mes, dia } = fechaLocal(fecha);
+  return new Date(Date.UTC(anio, mes - 1, dia));
+}
+
+export function periodoSiguiente(periodo: string): string {
+  const [anio, mes] = periodo.split("-").map(Number);
+  return mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, "0")}`;
+}
+
+export function periodoAnterior(periodo: string): string {
+  const [anio, mes] = periodo.split("-").map(Number);
+  return mes === 1 ? `${anio - 1}-12` : `${anio}-${String(mes - 1).padStart(2, "0")}`;
+}

@@ -28,4 +28,12 @@ describe("ejecutar", () => {
       }),
     ).rejects.toThrow(/^REDIRECT:\/x\?error=No%20hay%20cupo&f=[\w-]+$/);
   });
+
+  it("si la ruta ya tiene parámetros, agrega el aviso con & y revalida solo el path", async () => {
+    const { revalidatePath } = await import("next/cache");
+    await expect(ejecutar("/c/demo/admin/calendario?mes=2026-10", async () => "Clase suspendida")).rejects.toThrow(
+      /^REDIRECT:\/c\/demo\/admin\/calendario\?mes=2026-10&ok=Clase%20suspendida&f=[\w-]+$/,
+    );
+    expect(revalidatePath).toHaveBeenLastCalledWith("/c/demo/admin/calendario");
+  });
 });

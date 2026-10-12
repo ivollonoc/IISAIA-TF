@@ -1,13 +1,10 @@
 // Reglas puras de cuenta corriente (sin I/O) para poder testearlas aisladas.
-import { fechaLocal, OFFSET_UTC_HORAS, PERIODO_REGEX, periodoActual } from "@/lib/periodo";
+import { inicioDelDia, OFFSET_UTC_HORAS, PERIODO_REGEX, periodoActual, periodoSiguiente } from "@/lib/periodo";
+
+// Helpers de días compartidos con otros módulos (viven en lib/periodo).
+export { inicioDelDia, periodoAnterior, periodoSiguiente } from "@/lib/periodo";
 
 type EstadoCargoStr = "PENDIENTE" | "PAGADO" | "ANULADO";
-
-/** Medianoche UTC del día calendario de `fecha` en Argentina: así se guardan y comparan los vencimientos. */
-export function inicioDelDia(fecha: Date = new Date()): Date {
-  const { anio, mes, dia } = fechaLocal(fecha);
-  return new Date(Date.UTC(anio, mes - 1, dia));
-}
 
 /** Vencimiento de un período ("YYYY-MM") según el día de vencimiento del club (1..28). */
 export function vencimiento(periodo: string, dia: number): Date {
@@ -15,16 +12,6 @@ export function vencimiento(periodo: string, dia: number): Date {
   if (!Number.isInteger(dia) || dia < 1 || dia > 28) throw new Error(`Día de vencimiento inválido: ${dia}`);
   const [anio, mes] = periodo.split("-").map(Number);
   return new Date(Date.UTC(anio, mes - 1, dia));
-}
-
-export function periodoSiguiente(periodo: string): string {
-  const [anio, mes] = periodo.split("-").map(Number);
-  return mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, "0")}`;
-}
-
-export function periodoAnterior(periodo: string): string {
-  const [anio, mes] = periodo.split("-").map(Number);
-  return mes === 1 ? `${anio - 1}-12` : `${anio}-${String(mes - 1).padStart(2, "0")}`;
 }
 
 /** Períodos para los que se pueden generar cargos: el actual y el siguiente. */
