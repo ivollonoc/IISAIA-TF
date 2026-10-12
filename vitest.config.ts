@@ -18,8 +18,8 @@ export default defineConfig({
           env: testDbEnv(),
           globalSetup: ["tests/helpers/global-setup.ts"],
           setupFiles: ["tests/helpers/setup-integration.ts"],
-          // Comparten la base: un archivo a la vez.
-          fileParallelism: false,
+          // Comparten la base: un archivo a la vez (un único proceso hijo, en serie).
+          poolOptions: { forks: { singleFork: true } },
           testTimeout: 20_000,
           hookTimeout: 60_000,
         },
