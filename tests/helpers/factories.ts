@@ -46,7 +46,16 @@ export async function crearSocio(
 
 export function crearActividad(
   clubId: string,
-  over: { nombre?: string; diaSemana?: number; hora?: string; cupo?: number; activa?: boolean; arancel?: number } = {},
+  over: {
+    nombre?: string;
+    diaSemana?: number;
+    hora?: string;
+    cupo?: number;
+    activa?: boolean;
+    arancel?: number;
+    duracionMin?: number;
+    createdAt?: Date;
+  } = {},
 ) {
   const n = siguiente();
   return db.actividad.create({
@@ -95,5 +104,31 @@ export function crearCargo(
       vencimiento: new Date(Date.UTC(2026, 9, 10)),
       ...over,
     },
+  });
+}
+
+export function crearExcepcion(
+  clubId: string,
+  actividadId: string,
+  over: {
+    fecha?: Date;
+    tipo?: "SUSPENDIDA" | "REPROGRAMADA";
+    nuevaFecha?: Date | null;
+    nuevaHora?: string | null;
+    motivo?: string;
+  } = {},
+) {
+  return db.excepcionClase.create({
+    data: { clubId, actividadId, fecha: new Date(Date.UTC(2026, 9, 21)), tipo: "SUSPENDIDA", motivo: "Feriado", ...over },
+  });
+}
+
+export function crearEvento(
+  clubId: string,
+  over: { titulo?: string; fecha?: Date; hora?: string; lugar?: string | null; descripcion?: string | null; actividadId?: string | null } = {},
+) {
+  const n = siguiente();
+  return db.evento.create({
+    data: { clubId, titulo: `Evento ${n}`, fecha: new Date(Date.UTC(2026, 9, 20)), hora: "20:00", ...over },
   });
 }

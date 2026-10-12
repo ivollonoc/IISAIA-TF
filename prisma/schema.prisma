@@ -43,19 +43,21 @@ enum EstadoIntento {
 }
 
 model Club {
-  id             String        @id @default(cuid())
-  nombre         String
-  slug           String        @unique
-  diaVencimiento Int           @default(10) // 1..28
-  createdAt      DateTime      @default(now())
-  usuarios       Usuario[]
-  tiposSocio     TipoSocio[]
-  socios         Socio[]
-  pagos          Pago[]
-  actividades    Actividad[]
-  inscripciones  Inscripcion[]
-  cargos         Cargo[]
-  intentosPago   IntentoPago[]
+  id               String           @id @default(cuid())
+  nombre           String
+  slug             String           @unique
+  diaVencimiento   Int              @default(10) // 1..28
+  createdAt        DateTime         @default(now())
+  usuarios         Usuario[]
+  tiposSocio       TipoSocio[]
+  socios           Socio[]
+  pagos            Pago[]
+  actividades      Actividad[]
+  inscripciones    Inscripcion[]
+  cargos           Cargo[]
+  intentosPago     IntentoPago[]
+  excepcionesClase ExcepcionClase[]
+  eventos          Evento[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
@@ -126,17 +128,21 @@ model Pago {
 }
 
 model Actividad {
-  id            String        @id @default(cuid())
+  id            String           @id @default(cuid())
   clubId        String
-  club          Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  club          Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
   nombre        String
   diaSemana     Int // 0 = domingo ... 6 = sábado
   hora          String // "HH:MM"
   cupo          Int
-  arancel       Int           @default(0) // pesos por mes; 0 = gratuita
-  activa        Boolean       @default(true)
+  arancel       Int              @default(0) // pesos por mes; 0 = gratuita
+  duracionMin   Int              @default(60) // minutos, para mostrar "18:00–19:00"
+  createdAt     DateTime         @default(now()) // las clases se muestran desde este día
+  activa        Boolean          @default(true)
   inscripciones Inscripcion[]
   cargos        Cargo[]
+  excepciones   ExcepcionClase[]
+  eventos       Evento[]
 
   @@index([clubId])
 }
@@ -200,4 +206,45 @@ model IntentoPago {
   createdAt         DateTime      @default(now())
 
   @@index([clubId, estado])
+}
+
+enum TipoExcepcion {
+  SUSPENDIDA
+  REPROGRAMADA
+}
+
+// Lo único que se guarda de las clases: lo que se aparta de la regla semanal.
+model ExcepcionClase {
+  id          String        @id @default(cuid())
+  clubId      String
+  club        Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  actividadId String
+  actividad   Actividad     @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  fecha       DateTime // día original de la clase (medianoche UTC)
+  tipo        TipoExcepcion
+  nuevaFecha  DateTime? // solo REPROGRAMADA (medianoche UTC)
+  nuevaHora   String? // "HH:MM", solo REPROGRAMADA
+  motivo      String
+  createdAt   DateTime      @default(now())
+
+  @@unique([actividadId, fecha])
+  @@index([clubId, fecha])
+  @@index([clubId, nuevaFecha])
+}
+
+// Evento puntual informativo: para todo el club (actividadId null) o para los inscriptos de una actividad.
+model Evento {
+  id          String     @id @default(cuid())
+  clubId      String
+  club        Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  titulo      String
+  descripcion String?
+  fecha       DateTime // medianoche UTC
+  hora        String // "HH:MM"
+  lugar       String?
+  actividadId String?
+  actividad   Actividad? @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@index([clubId, fecha])
 }

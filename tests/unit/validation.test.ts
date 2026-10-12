@@ -48,6 +48,14 @@ describe("actividadSchema", () => {
     expect(actividadSchema.parse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: "5000" }).arancel).toBe(5000);
     expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: -1 }).success).toBe(false);
   });
+
+  it("la duración es opcional (60 min), se convierte desde texto y va de 15 a 600", () => {
+    const base = { nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 };
+    expect(actividadSchema.parse(base).duracionMin).toBe(60);
+    expect(actividadSchema.parse({ ...base, duracionMin: "90" }).duracionMin).toBe(90);
+    expect(actividadSchema.safeParse({ ...base, duracionMin: 10 }).success).toBe(false);
+    expect(actividadSchema.safeParse({ ...base, duracionMin: 601 }).success).toBe(false);
+  });
 });
 
 describe("configClubSchema", () => {

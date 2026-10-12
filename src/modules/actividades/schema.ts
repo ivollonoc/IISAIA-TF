@@ -8,4 +8,5 @@ export const actividadSchema = z.object({
   hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora con formato HH:MM"),
   cupo: entero(1, 500),
   arancel: entero(0, 10_000_000).default(0),
+  duracionMin: entero(15, 600).default(60),
 });
