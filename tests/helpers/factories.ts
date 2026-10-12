@@ -44,23 +44,39 @@ export async function crearSocio(
   });
 }
 
+export type HorarioFactory = { diaSemana: number; hora: string; duracionMin?: number };
+
+/** Por defecto: un horario los lunes a las 18:00 (60 min), vigente desde el 1/1/2026 y sin fin. */
 export function crearActividad(
   clubId: string,
   over: {
     nombre?: string;
-    diaSemana?: number;
-    hora?: string;
+    horarios?: HorarioFactory[];
     cupo?: number;
     activa?: boolean;
     arancel?: number;
-    duracionMin?: number;
+    fechaInicio?: Date;
+    fechaFin?: Date | null;
     createdAt?: Date;
   } = {},
 ) {
   const n = siguiente();
+  const { horarios = [{ diaSemana: 1, hora: "18:00" }], ...resto } = over;
   return db.actividad.create({
-    data: { clubId, nombre: `Actividad ${n}`, diaSemana: 1, hora: "18:00", cupo: 10, activa: true, ...over },
+    data: {
+      clubId, nombre: `Actividad ${n}`, cupo: 10, activa: true, fechaInicio: new Date(Date.UTC(2026, 0, 1)), ...resto,
+      horarios: { create: horarios },
+    },
+    include: { horarios: true },
   });
+}
+
+export function inscribirEventoDirecto(clubId: string, eventoId: string, socioId: string) {
+  return db.inscripcionEvento.create({ data: { clubId, eventoId, socioId } });
+}
+
+export function anotarEsperaDirecto(clubId: string, socioId: string, ref: { actividadId?: string; eventoId?: string }) {
+  return db.listaEspera.create({ data: { clubId, socioId, ...ref } });
 }
 
 export function inscribirDirecto(clubId: string, actividadId: string, socioId: string) {
@@ -79,7 +95,7 @@ export function crearCargo(
   clubId: string,
   socioId: string,
   over: {
-    concepto?: "CUOTA" | "ACTIVIDAD";
+    concepto?: "CUOTA" | "ACTIVIDAD" | "EVENTO";
     actividadId?: string | null;
     clave?: string;
     descripcion?: string;
@@ -125,7 +141,18 @@ export function crearExcepcion(
 
 export function crearEvento(
   clubId: string,
-  over: { titulo?: string; fecha?: Date; hora?: string; lugar?: string | null; descripcion?: string | null; actividadId?: string | null } = {},
+  over: {
+    titulo?: string;
+    fecha?: Date;
+    hora?: string;
+    duracionMin?: number;
+    lugar?: string | null;
+    descripcion?: string | null;
+    actividadId?: string | null;
+    conInscripcion?: boolean;
+    cupo?: number | null;
+    precio?: number;
+  } = {},
 ) {
   const n = siguiente();
   return db.evento.create({

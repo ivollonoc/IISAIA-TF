@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import type { Actividad, Club } from "@prisma/client";
+import type { Club } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   calendarioClub,
@@ -19,12 +19,12 @@ const dia = (a: number, m: number, d: number) => new Date(Date.UTC(a, m - 1, d))
 const hoy = new Date(Date.UTC(2026, 9, 15, 15)); // jueves 15/10/2026 12:00 en Argentina
 
 let club: Club;
-let natacion: Actividad; // miércoles 19:00
+let natacion: { id: string }; // miércoles 19:00
 
 beforeEach(async () => {
   await resetDb();
   club = await f.crearClub();
-  natacion = await f.crearActividad(club.id, { nombre: "Natación", diaSemana: 3, hora: "19:00", createdAt: dia(2026, 1, 1) });
+  natacion = await f.crearActividad(club.id, { nombre: "Natación", horarios: [{ diaSemana: 3, hora: "19:00" }] });
 });
 
 const suspender = (over: Record<string, string> = {}) =>
@@ -51,10 +51,20 @@ describe("suspenderClase", () => {
 
   it("rechaza actividades de otro club o inactivas", async () => {
     const otro = await f.crearClub();
-    const ajena = await f.crearActividad(otro.id, { diaSemana: 3, createdAt: dia(2026, 1, 1) });
+    const ajena = await f.crearActividad(otro.id, { horarios: [{ diaSemana: 3, hora: "18:00" }] });
     await expect(suspender({ actividadId: ajena.id })).rejects.toThrow("Actividad no encontrada");
-    const cerrada = await f.crearActividad(club.id, { diaSemana: 3, activa: false, createdAt: dia(2026, 1, 1) });
+    const cerrada = await f.crearActividad(club.id, { horarios: [{ diaSemana: 3, hora: "18:00" }], activa: false });
     await expect(suspender({ actividadId: cerrada.id })).rejects.toThrow("Actividad no encontrada");
+  });
+
+  it("acepta cualquiera de los días de la actividad y rechaza fechas posteriores a su fin", async () => {
+    const funcional = await f.crearActividad(club.id, {
+      horarios: [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 5, hora: "08:00" }], fechaFin: dia(2026, 10, 20),
+    });
+    await expect(suspender({ actividadId: funcional.id, fecha: "2026-10-16" })).resolves.toBeTruthy();
+    await expect(suspender({ actividadId: funcional.id, fecha: "2026-10-26" })).rejects.toThrow(
+      "Esa fecha no corresponde a una clase de la actividad",
+    );
   });
 
   it("exige motivo y una fecha válida", async () => {
@@ -86,6 +96,13 @@ describe("reprogramarClase", () => {
       "Elegí una fecha u hora distinta",
     );
   });
+
+  it("compara contra la hora del horario de ese día", async () => {
+    const funcional = await f.crearActividad(club.id, { horarios: [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 5, hora: "08:00" }] });
+    const base = { actividadId: funcional.id, fecha: "2026-10-16", nuevaFecha: "2026-10-16" };
+    await expect(reprogramar({ ...base, nuevaHora: "08:00" })).rejects.toThrow("Elegí una fecha u hora distinta");
+    await expect(reprogramar({ ...base, nuevaHora: "19:00" })).resolves.toBeTruthy();
+  });
 });
 
 describe("restablecerClase", () => {
@@ -99,7 +116,7 @@ describe("restablecerClase", () => {
 
   it("no restablece cambios de otro club", async () => {
     const otro = await f.crearClub();
-    const ajena = await f.crearActividad(otro.id, { diaSemana: 3, createdAt: dia(2026, 1, 1) });
+    const ajena = await f.crearActividad(otro.id, { horarios: [{ diaSemana: 3, hora: "18:00" }] });
     const e = await f.crearExcepcion(otro.id, ajena.id);
     await expect(restablecerClase(club.id, e.id, hoy)).rejects.toThrow("Cambio no encontrado");
   });
@@ -161,7 +178,7 @@ describe("obtenerClase / obtenerEvento (selección desde la URL)", () => {
 
   it("devuelve null para claves manipuladas: otro club, fecha fuera de la regla o mal formada", async () => {
     const otro = await f.crearClub();
-    const ajena = await f.crearActividad(otro.id, { diaSemana: 3, createdAt: dia(2026, 1, 1) });
+    const ajena = await f.crearActividad(otro.id, { horarios: [{ diaSemana: 3, hora: "18:00" }] });
     expect(await obtenerClase(club.id, `${ajena.id}:2026-10-21`)).toBeNull();
     expect(await obtenerClase(club.id, `${natacion.id}:2026-10-22`)).toBeNull();
     expect(await obtenerClase(club.id, `${natacion.id}:basura`)).toBeNull();
@@ -169,7 +186,7 @@ describe("obtenerClase / obtenerEvento (selección desde la URL)", () => {
   });
 
   it("devuelve null para una actividad inactiva (no ofrece formularios que van a fallar)", async () => {
-    const cerrada = await f.crearActividad(club.id, { diaSemana: 3, activa: false, createdAt: dia(2026, 1, 1) });
+    const cerrada = await f.crearActividad(club.id, { horarios: [{ diaSemana: 3, hora: "18:00" }], activa: false });
     expect(await obtenerClase(club.id, `${cerrada.id}:2026-10-21`)).toBeNull();
   });
 

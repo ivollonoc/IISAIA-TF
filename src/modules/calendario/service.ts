@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
-import { armarCalendario, clasesEnRango, parsearDia } from "./reglas";
+import { armarCalendario, horarioDe, parsearDia } from "./reglas";
 import { eventoSchema, reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
 
 export const MAX_DIAS_RANGO = 42;
@@ -22,7 +22,7 @@ const excepcionesDelRango = (desde: Date, hasta: Date) => ({
 export async function calendarioClub(clubId: string, desde: Date, hasta: Date) {
   validarRango(desde, hasta);
   const [actividades, excepciones, eventos] = await Promise.all([
-    db.actividad.findMany({ where: { clubId, activa: true } }),
+    db.actividad.findMany({ where: { clubId, activa: true }, include: { horarios: true } }),
     db.excepcionClase.findMany({ where: { clubId, ...excepcionesDelRango(desde, hasta) } }),
     db.evento.findMany({ where: { clubId, fecha: { gte: desde, lte: hasta } } }),
   ]);
@@ -35,7 +35,7 @@ export async function calendarioSocio(clubId: string, socioId: string, desde: Da
   const inscripciones = await db.inscripcion.findMany({ where: { clubId, socioId }, select: { actividadId: true } });
   const ids = inscripciones.map((i) => i.actividadId);
   const [actividades, excepciones, eventos] = await Promise.all([
-    db.actividad.findMany({ where: { clubId, activa: true, id: { in: ids } } }),
+    db.actividad.findMany({ where: { clubId, activa: true, id: { in: ids } }, include: { horarios: true } }),
     db.excepcionClase.findMany({ where: { clubId, actividadId: { in: ids }, ...excepcionesDelRango(desde, hasta) } }),
     db.evento.findMany({
       where: { clubId, fecha: { gte: desde, lte: hasta }, OR: [{ actividadId: null }, { actividadId: { in: ids } }] },
@@ -46,15 +46,17 @@ export async function calendarioSocio(clubId: string, socioId: string, desde: Da
 
 const esPasada = (fecha: Date, hoy: Date) => fecha.getTime() < inicioDelDia(hoy).getTime();
 
-/** Verifica que (actividad, fecha) sea una clase modificable de la regla y devuelve la actividad. */
+/** Verifica que (actividad, fecha) sea una clase modificable y devuelve el horario de ese día. */
 async function claseModificable(clubId: string, actividadId: string, fecha: Date, hoy: Date) {
-  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId, activa: true } });
+  const actividad = await db.actividad.findFirst({
+    where: { id: actividadId, clubId, activa: true },
+    include: { horarios: true },
+  });
   if (!actividad) throw new DomainError("Actividad no encontrada");
-  if (clasesEnRango(actividad, fecha, fecha).length === 0) {
-    throw new DomainError("Esa fecha no corresponde a una clase de la actividad");
-  }
+  const horario = horarioDe(actividad, fecha);
+  if (!horario) throw new DomainError("Esa fecha no corresponde a una clase de la actividad");
   if (esPasada(fecha, hoy)) throw new DomainError("No se pueden modificar clases pasadas");
-  return actividad;
+  return horario;
 }
 
 /** Crea la excepción; si la clase ya tenía una (UNIQUE actividad+fecha), avisa que hay que restablecerla. */
@@ -77,9 +79,9 @@ export async function suspenderClase(clubId: string, input: unknown, hoy: Date =
 
 export async function reprogramarClase(clubId: string, input: unknown, hoy: Date = new Date()) {
   const data = reprogramarClaseSchema.parse(input);
-  const actividad = await claseModificable(clubId, data.actividadId, data.fecha, hoy);
+  const horario = await claseModificable(clubId, data.actividadId, data.fecha, hoy);
   if (esPasada(data.nuevaFecha, hoy)) throw new DomainError("La nueva fecha no puede ser pasada");
-  if (data.nuevaFecha.getTime() === data.fecha.getTime() && data.nuevaHora === actividad.hora) {
+  if (data.nuevaFecha.getTime() === data.fecha.getTime() && data.nuevaHora === horario.hora) {
     throw new DomainError("Elegí una fecha u hora distinta");
   }
   return guardarExcepcion({
@@ -116,10 +118,14 @@ export async function obtenerClase(clubId: string, clave: string) {
   const [actividadId, textoFecha] = clave.split(":");
   const fecha = textoFecha ? parsearDia(textoFecha) : null;
   if (!actividadId || !fecha) return null;
-  const actividad = await db.actividad.findFirst({ where: { id: actividadId, clubId, activa: true } });
-  if (!actividad || clasesEnRango(actividad, fecha, fecha).length === 0) return null;
+  const actividad = await db.actividad.findFirst({
+    where: { id: actividadId, clubId, activa: true },
+    include: { horarios: true },
+  });
+  const horario = actividad && horarioDe(actividad, fecha);
+  if (!actividad || !horario) return null;
   const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha: { actividadId, fecha } } });
-  return { actividad, fecha, excepcion };
+  return { actividad, horario, fecha, excepcion };
 }
 
 export function obtenerEvento(clubId: string, eventoId: string) {

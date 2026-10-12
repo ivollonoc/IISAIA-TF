@@ -4,7 +4,7 @@ import { listarActividades } from "@/modules/actividades/service";
 import { DIAS, formatPesos } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Selector, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearActividadAction } from "@/modules/actividades/actions";
-import { horaFin } from "@/modules/calendario/reglas";
+import { formatHorarios } from "@/modules/calendario/components/etiquetas";
 
 export default async function ActividadesPage({
   params,
@@ -28,10 +28,7 @@ export default async function ActividadesPage({
               {actividades.map((a) => (
                 <tr key={a.id}>
                   <td className="py-2 pr-4 font-medium">{a.nombre}</td>
-                  <td className="py-2 pr-4">{DIAS[a.diaSemana]}</td>
-                  <td className="py-2 pr-4">
-                    {a.hora}–{horaFin(a.hora, a.duracionMin)}
-                  </td>
+                  <td className="py-2 pr-4" colSpan={2}>{formatHorarios(a.horarios)}</td>
                   <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
                   <td className="py-2 pr-4">
                     {a._count.inscripciones} / {a.cupo}

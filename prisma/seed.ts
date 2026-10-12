@@ -55,13 +55,13 @@ async function main() {
   const [lucia, martin, sofia, , valentina] = socios;
   const cuota = (s: Socio) => (s.tipoSocioId === activo.id ? activo.cuotaMensual : cadete.cuotaMensual);
 
-  const futbol = await prisma.actividad.create({
-    data: { clubId: club.id, nombre: "Fútbol infantil", diaSemana: 1, hora: "18:00", cupo: 20, arancel: 6000, createdAt: demo.creadas },
-  });
-  const natacion = await prisma.actividad.create({
-    data: { clubId: club.id, nombre: "Natación", diaSemana: 3, hora: "19:00", cupo: 2, arancel: 5000, createdAt: demo.creadas },
-  });
-  await prisma.actividad.create({ data: { clubId: club.id, nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, createdAt: demo.creadas } });
+  const actividad = (nombre: string, cupo: number, arancel: number, horarios: { diaSemana: number; hora: string }[]) =>
+    prisma.actividad.create({
+      data: { clubId: club.id, nombre, cupo, arancel, fechaInicio: demo.creadas, horarios: { create: horarios } },
+    });
+  const futbol = await actividad("Fútbol infantil", 20, 6000, [{ diaSemana: 1, hora: "18:00" }]);
+  const natacion = await actividad("Natación", 2, 5000, [{ diaSemana: 3, hora: "19:00" }]);
+  await actividad("Yoga", 15, 0, [{ diaSemana: 6, hora: "10:00" }]);
 
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: sofia.id } });
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: natacion.id, socioId: lucia.id } });

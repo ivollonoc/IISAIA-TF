@@ -28,6 +28,7 @@ enum MedioPago {
 enum ConceptoCargo {
   CUOTA
   ACTIVIDAD
+  EVENTO
 }
 
 enum EstadoCargo {
@@ -43,21 +44,23 @@ enum EstadoIntento {
 }
 
 model Club {
-  id               String           @id @default(cuid())
-  nombre           String
-  slug             String           @unique
-  diaVencimiento   Int              @default(10) // 1..28
-  createdAt        DateTime         @default(now())
-  usuarios         Usuario[]
-  tiposSocio       TipoSocio[]
-  socios           Socio[]
-  pagos            Pago[]
-  actividades      Actividad[]
-  inscripciones    Inscripcion[]
-  cargos           Cargo[]
-  intentosPago     IntentoPago[]
-  excepcionesClase ExcepcionClase[]
-  eventos          Evento[]
+  id                  String              @id @default(cuid())
+  nombre              String
+  slug                String              @unique
+  diaVencimiento      Int                 @default(10) // 1..28
+  createdAt           DateTime            @default(now())
+  usuarios            Usuario[]
+  tiposSocio          TipoSocio[]
+  socios              Socio[]
+  pagos               Pago[]
+  actividades         Actividad[]
+  inscripciones       Inscripcion[]
+  cargos              Cargo[]
+  intentosPago        IntentoPago[]
+  excepcionesClase    ExcepcionClase[]
+  eventos             Evento[]
+  inscripcionesEvento InscripcionEvento[]
+  listaEspera         ListaEspera[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
@@ -86,24 +89,26 @@ model TipoSocio {
 }
 
 model Socio {
-  id            String        @id @default(cuid())
-  clubId        String
-  club          Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  usuarioId     String?       @unique
-  usuario       Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
-  nroSocio      Int
-  nombre        String
-  apellido      String
-  dni           String
-  email         String?
-  tipoSocioId   String
-  tipoSocio     TipoSocio     @relation(fields: [tipoSocioId], references: [id])
-  activo        Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  pagos         Pago[]
-  inscripciones Inscripcion[]
-  cargos        Cargo[]
-  intentosPago  IntentoPago[]
+  id                  String              @id @default(cuid())
+  clubId              String
+  club                Club                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  usuarioId           String?             @unique
+  usuario             Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  nroSocio            Int
+  nombre              String
+  apellido            String
+  dni                 String
+  email               String?
+  tipoSocioId         String
+  tipoSocio           TipoSocio           @relation(fields: [tipoSocioId], references: [id])
+  activo              Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  pagos               Pago[]
+  inscripciones       Inscripcion[]
+  cargos              Cargo[]
+  intentosPago        IntentoPago[]
+  inscripcionesEvento InscripcionEvento[]
+  listaEspera         ListaEspera[]
 
   @@unique([clubId, nroSocio])
   @@unique([clubId, dni])
@@ -127,24 +132,39 @@ model Pago {
   @@index([clubId, fecha])
 }
 
+// Actividad recurrente: clases semanales según sus horarios, entre fechaInicio y fechaFin.
 model Actividad {
-  id            String           @id @default(cuid())
+  id            String             @id @default(cuid())
   clubId        String
-  club          Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  club          Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
   nombre        String
-  diaSemana     Int // 0 = domingo ... 6 = sábado
-  hora          String // "HH:MM"
+  descripcion   String?
   cupo          Int
-  arancel       Int              @default(0) // pesos por mes; 0 = gratuita
-  duracionMin   Int              @default(60) // minutos, para mostrar "18:00–19:00"
-  createdAt     DateTime         @default(now()) // las clases se muestran desde este día
-  activa        Boolean          @default(true)
+  arancel       Int                @default(0) // pesos por mes; 0 = gratuita
+  fechaInicio   DateTime // medianoche UTC; las clases empiezan ese día
+  fechaFin      DateTime? // medianoche UTC, inclusive; null = sin fin
+  createdAt     DateTime           @default(now())
+  activa        Boolean            @default(true)
+  horarios      HorarioActividad[]
   inscripciones Inscripcion[]
   cargos        Cargo[]
   excepciones   ExcepcionClase[]
   eventos       Evento[]
+  listaEspera   ListaEspera[]
 
   @@index([clubId])
+}
+
+// Un horario por día de la semana: (actividadId, fecha) sigue identificando una clase.
+model HorarioActividad {
+  id          String    @id @default(cuid())
+  actividadId String
+  actividad   Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  diaSemana   Int // 0 = domingo ... 6 = sábado
+  hora        String // "HH:MM"
+  duracionMin Int       @default(60)
+
+  @@unique([actividadId, diaSemana])
 }
 
 model Inscripcion {
@@ -232,19 +252,58 @@ model ExcepcionClase {
   @@index([clubId, nuevaFecha])
 }
 
-// Evento puntual informativo: para todo el club (actividadId null) o para los inscriptos de una actividad.
+// Evento puntual: para todo el club (actividadId null) o para los inscriptos de una actividad.
+// Opcionalmente admite inscripción, con cupo (null = sin límite) y precio (genera un cargo único).
 model Evento {
+  id             String              @id @default(cuid())
+  clubId         String
+  club           Club                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  titulo         String
+  descripcion    String?
+  fecha          DateTime // medianoche UTC
+  hora           String // "HH:MM"
+  duracionMin    Int                 @default(60)
+  lugar          String?
+  actividadId    String?
+  actividad      Actividad?          @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  conInscripcion Boolean             @default(false)
+  cupo           Int?
+  precio         Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  inscripciones  InscripcionEvento[]
+  listaEspera    ListaEspera[]
+
+  @@index([clubId, fecha])
+}
+
+model InscripcionEvento {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  eventoId  String
+  evento    Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  socioId   String
+  socio     Socio    @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventoId, socioId])
+  @@index([clubId])
+}
+
+// Lista de espera de una actividad o de un evento llenos (exactamente uno de los dos).
+model ListaEspera {
   id          String     @id @default(cuid())
   clubId      String
   club        Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  titulo      String
-  descripcion String?
-  fecha       DateTime // medianoche UTC
-  hora        String // "HH:MM"
-  lugar       String?
+  socioId     String
+  socio       Socio      @relation(fields: [socioId], references: [id], onDelete: Cascade)
   actividadId String?
   actividad   Actividad? @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  eventoId    String?
+  evento      Evento?    @relation(fields: [eventoId], references: [id], onDelete: Cascade)
   createdAt   DateTime   @default(now())
 
-  @@index([clubId, fecha])
+  @@unique([socioId, actividadId])
+  @@unique([socioId, eventoId])
+  @@index([clubId])
 }

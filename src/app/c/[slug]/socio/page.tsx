@@ -4,7 +4,8 @@ import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { actividadesParaSocio } from "@/modules/actividades/service";
 import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
-import { DIAS, formatDia, formatPesos } from "@/lib/format";
+import { formatDia, formatPesos } from "@/lib/format";
+import { formatHorarios } from "@/modules/calendario/components/etiquetas";
 import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
 import { BotonPagarSeleccion } from "@/modules/cuenta-corriente/components/BotonPagarSeleccion";
@@ -71,7 +72,7 @@ export default async function SocioHomePage({
                   <tr key={a.id}>
                     <td className="py-2 pr-4 font-medium">{a.nombre}</td>
                     <td className="py-2 pr-4">
-                      {DIAS[a.diaSemana]} {a.hora}
+                      {formatHorarios(a.horarios)}
                     </td>
                     <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
                     <td className="py-2 pr-4">

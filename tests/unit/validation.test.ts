@@ -34,27 +34,51 @@ describe("socioSchema", () => {
 });
 
 describe("actividadSchema", () => {
-  it("acepta hora HH:MM y cupo positivo", () => {
-    expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: "6", hora: "10:00", cupo: "15" }).success).toBe(true);
+  const base = { nombre: "Yoga", cupo: "15", fechaInicio: "2026-10-01" };
+  const errores = (input: object) => {
+    const r = actividadSchema.safeParse(input);
+    return r.success ? [] : r.error.issues.map((i) => i.message);
+  };
+
+  it("arma los horarios desde los campos del formulario (dia_N, hora_N, duracion_N)", () => {
+    const r = actividadSchema.parse({
+      ...base, dia_1: "on", hora_1: "18:00", duracion_1: "90", dia_3: "on", hora_3: "19:00", duracion_3: "", hora_5: "10:00",
+    });
+    expect(r.horarios).toEqual([
+      { diaSemana: 1, hora: "18:00", duracionMin: 90 },
+      { diaSemana: 3, hora: "19:00", duracionMin: 60 },
+    ]);
+    expect(r.fechaInicio).toEqual(new Date(Date.UTC(2026, 9, 1)));
+    expect(r.fechaFin).toBeNull();
+    expect(r.descripcion).toBeNull();
   });
 
-  it("rechaza hora inválida y cupo 0", () => {
-    expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "25:00", cupo: 15 }).success).toBe(false);
-    expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 0 }).success).toBe(false);
+  it("acepta los horarios como lista", () => {
+    const r = actividadSchema.parse({ ...base, horarios: [{ diaSemana: 6, hora: "10:00" }] });
+    expect(r.horarios).toEqual([{ diaSemana: 6, hora: "10:00", duracionMin: 60 }]);
   });
 
-  it("el arancel es opcional (gratuita), se convierte desde texto y no puede ser negativo", () => {
-    expect(actividadSchema.parse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 }).arancel).toBe(0);
-    expect(actividadSchema.parse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: "5000" }).arancel).toBe(5000);
-    expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, arancel: -1 }).success).toBe(false);
+  it("exige al menos un día, un horario por día y horas válidas", () => {
+    expect(errores(base)).toContain("Elegí al menos un día");
+    expect(errores({ ...base, horarios: [{ diaSemana: 1, hora: "10:00" }, { diaSemana: 1, hora: "18:00" }] })).toContain(
+      "Un solo horario por día",
+    );
+    expect(actividadSchema.safeParse({ ...base, dia_1: "on", hora_1: "25:00" }).success).toBe(false);
+    expect(actividadSchema.safeParse({ ...base, dia_1: "on", hora_1: "10:00", duracion_1: "10" }).success).toBe(false);
   });
 
-  it("la duración es opcional (60 min), se convierte desde texto y va de 15 a 600", () => {
-    const base = { nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 };
-    expect(actividadSchema.parse(base).duracionMin).toBe(60);
-    expect(actividadSchema.parse({ ...base, duracionMin: "90" }).duracionMin).toBe(90);
-    expect(actividadSchema.safeParse({ ...base, duracionMin: 10 }).success).toBe(false);
-    expect(actividadSchema.safeParse({ ...base, duracionMin: 601 }).success).toBe(false);
+  it("rechaza cupo 0, arancel negativo y fin anterior al inicio", () => {
+    const conDia = { ...base, dia_1: "on", hora_1: "10:00" };
+    expect(actividadSchema.safeParse({ ...conDia, cupo: 0 }).success).toBe(false);
+    expect(actividadSchema.safeParse({ ...conDia, arancel: -1 }).success).toBe(false);
+    expect(errores({ ...conDia, fechaFin: "2026-09-30" })).toContain("La fecha de fin no puede ser anterior al inicio");
+    expect(actividadSchema.parse({ ...conDia, fechaFin: "2026-10-01" }).fechaFin).toEqual(new Date(Date.UTC(2026, 9, 1)));
+  });
+
+  it("el arancel es opcional (gratuita) y se convierte desde texto", () => {
+    const conDia = { ...base, dia_1: "on", hora_1: "10:00" };
+    expect(actividadSchema.parse(conDia).arancel).toBe(0);
+    expect(actividadSchema.parse({ ...conDia, arancel: "5000" }).arancel).toBe(5000);
   });
 });
 

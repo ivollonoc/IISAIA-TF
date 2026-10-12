@@ -1,6 +1,25 @@
 // Textos de un ítem del calendario: corto para la grilla y completo para la agenda.
 import { formatDiaCorto } from "@/lib/format";
-import { claveDia, type ItemCalendario } from "../reglas";
+import { claveDia, horaFin, type HorarioCalendario, type ItemCalendario } from "../reglas";
+
+const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const ordenSemana = (diaSemana: number) => (diaSemana + 6) % 7; // lunes primero
+
+/** "Lun, Mié y Vie 19:00–20:00 · Dom 10:00–11:00": agrupa los días con el mismo horario. */
+export function formatHorarios(horarios: HorarioCalendario[]): string {
+  const grupos = new Map<string, number[]>();
+  for (const h of [...horarios].sort((a, b) => ordenSemana(a.diaSemana) - ordenSemana(b.diaSemana))) {
+    const rango = `${h.hora}–${horaFin(h.hora, h.duracionMin)}`;
+    grupos.set(rango, [...(grupos.get(rango) ?? []), h.diaSemana]);
+  }
+  return [...grupos]
+    .map(([rango, dias]) => {
+      const nombres = dias.map((d) => DIAS_CORTOS[d]);
+      const lista = nombres.length > 1 ? `${nombres.slice(0, -1).join(", ")} y ${nombres.at(-1)}` : nombres[0];
+      return `${lista} ${rango}`;
+    })
+    .join(" · ");
+}
 
 export function etiquetaItem(item: ItemCalendario): string {
   const base = `${item.hora} ${item.titulo}`;

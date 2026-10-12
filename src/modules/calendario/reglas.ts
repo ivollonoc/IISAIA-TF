@@ -21,15 +21,22 @@ export interface ItemCalendario {
   descripcion?: string;
 }
 
-export interface ActividadCalendario {
-  id: string;
-  nombre: string;
+export interface HorarioCalendario {
   diaSemana: number;
   hora: string;
   duracionMin: number;
-  activa: boolean;
-  createdAt: Date;
 }
+
+export interface ActividadCalendario {
+  id: string;
+  nombre: string;
+  activa: boolean;
+  fechaInicio: Date;
+  fechaFin: Date | null;
+  horarios: HorarioCalendario[];
+}
+
+type Vigencia = Pick<ActividadCalendario, "fechaInicio" | "fechaFin" | "horarios">;
 
 export interface ExcepcionCalendario {
   id: string;
@@ -46,6 +53,7 @@ export interface EventoCalendario {
   titulo: string;
   fecha: Date;
   hora: string;
+  duracionMin: number;
   lugar: string | null;
   descripcion: string | null;
   actividadId: string | null;
@@ -66,15 +74,23 @@ export function mesDeParam(param: string | undefined, hoy: Date = new Date()): s
   return param && PERIODO_REGEX.test(param) && anio >= 2000 && anio <= 2100 ? param : periodoActual(hoy);
 }
 
-/** Fechas de la regla semanal dentro de [desde, hasta], sin clases anteriores a la creación. */
-export function clasesEnRango(actividad: { diaSemana: number; createdAt: Date }, desde: Date, hasta: Date): Date[] {
-  const inicio = Math.max(desde.getTime(), inicioDelDia(actividad.createdAt).getTime());
-  const fechas: Date[] = [];
-  for (let t = inicio; t <= hasta.getTime(); t += DIA_MS) {
+/** Clases de la actividad dentro de [desde, hasta] y de su vigencia, cada una con el horario de su día. */
+export function clasesEnRango(actividad: Vigencia, desde: Date, hasta: Date): { fecha: Date; horario: HorarioCalendario }[] {
+  const inicio = Math.max(desde.getTime(), actividad.fechaInicio.getTime());
+  const fin = Math.min(hasta.getTime(), actividad.fechaFin?.getTime() ?? Infinity);
+  const porDia = new Map(actividad.horarios.map((h) => [h.diaSemana, h]));
+  const clases: { fecha: Date; horario: HorarioCalendario }[] = [];
+  for (let t = inicio; t <= fin; t += DIA_MS) {
     const fecha = new Date(t);
-    if (fecha.getUTCDay() === actividad.diaSemana) fechas.push(fecha);
+    const horario = porDia.get(fecha.getUTCDay());
+    if (horario) clases.push({ fecha, horario });
   }
-  return fechas;
+  return clases;
+}
+
+/** Horario de la clase de ese día, o null si no hay clase (otro día o fuera de vigencia). */
+export function horarioDe(actividad: Vigencia, fecha: Date): HorarioCalendario | null {
+  return clasesEnRango(actividad, fecha, fecha)[0]?.horario ?? null;
 }
 
 /** Hora de fin "HH:MM" (da la vuelta a medianoche). */
@@ -104,9 +120,9 @@ export function armarCalendario({
   const items: ItemCalendario[] = [];
 
   for (const a of activas.values()) {
-    for (const fecha of clasesEnRango(a, desde, hasta)) {
+    for (const { fecha, horario } of clasesEnRango(a, desde, hasta)) {
       const base = {
-        tipo: "CLASE" as const, fecha, hora: a.hora, horaFin: horaFin(a.hora, a.duracionMin),
+        tipo: "CLASE" as const, fecha, hora: horario.hora, horaFin: horaFin(horario.hora, horario.duracionMin),
         titulo: a.nombre, actividadId: a.id,
       };
       const exc = porClase.get(`${a.id}|${claveDia(fecha)}`);
@@ -123,8 +139,9 @@ export function armarCalendario({
   for (const exc of excepciones) {
     const a = activas.get(exc.actividadId);
     if (!a || exc.tipo !== "REPROGRAMADA" || !exc.nuevaFecha || !exc.nuevaHora || !enRango(exc.nuevaFecha)) continue;
+    const duracion = horarioDe(a, exc.fecha)?.duracionMin ?? 60;
     items.push({
-      tipo: "CLASE", fecha: exc.nuevaFecha, hora: exc.nuevaHora, horaFin: horaFin(exc.nuevaHora, a.duracionMin),
+      tipo: "CLASE", fecha: exc.nuevaFecha, hora: exc.nuevaHora, horaFin: horaFin(exc.nuevaHora, duracion),
       titulo: a.nombre, estado: "REPROGRAMADA", motivo: exc.motivo, fechaOriginal: exc.fecha,
       actividadId: a.id, excepcionId: exc.id,
     });
@@ -133,7 +150,8 @@ export function armarCalendario({
   for (const ev of eventos) {
     if (!enRango(ev.fecha)) continue;
     items.push({
-      tipo: "EVENTO", fecha: ev.fecha, hora: ev.hora, titulo: ev.titulo, estado: "NORMAL", eventoId: ev.id,
+      tipo: "EVENTO", fecha: ev.fecha, hora: ev.hora, horaFin: horaFin(ev.hora, ev.duracionMin),
+      titulo: ev.titulo, estado: "NORMAL", eventoId: ev.id,
       lugar: ev.lugar ?? undefined, descripcion: ev.descripcion ?? undefined,
     });
   }
@@ -155,4 +173,78 @@ export function semanasDelMes(periodo: string): Date[][] {
     semanas.push(Array.from({ length: 7 }, (_, i) => new Date(t + i * DIA_MS)));
   }
   return semanas;
+}
+
+/** Los 7 días (lunes a domingo) de la semana que contiene la fecha. */
+export function semanaDe(fecha: Date): Date[] {
+  const lunes = fecha.getTime() - ((fecha.getUTCDay() + 6) % 7) * DIA_MS;
+  return Array.from({ length: 7 }, (_, i) => new Date(lunes + i * DIA_MS));
+}
+
+/** Lunes de la semana a mostrar: la del parámetro ?semana=AAAA-MM-DD si es válido; si no, la actual. */
+export function lunesDeParam(param: string | undefined, hoy: Date = new Date()): Date {
+  const fecha = (param && parsearDia(param)) || inicioDelDia(hoy);
+  return semanaDe(fecha)[0];
+}
+
+const minutos = (hora: string) => {
+  const [h, m] = hora.split(":").map(Number);
+  return h * 60 + m;
+};
+
+export interface BloqueSemana {
+  item: ItemCalendario;
+  columna: number; // 0 = lunes
+  inicioMin: number; // minutos desde desdeHora
+  duracionMin: number;
+  carril: number;
+  carriles: number;
+}
+
+/**
+ * Ubicación de los ítems en la grilla semanal: columna por día, posición y alto por hora. Rango de
+ * 8 a 22 h, ampliado para que entren todos. Los que se superponen el mismo día se reparten en
+ * carriles (columnas angostas). Un ítem que pasa la medianoche se corta a las 24 h.
+ */
+export function bloquesSemana(
+  items: ItemCalendario[],
+  dias: Date[],
+): { desdeHora: number; hastaHora: number; bloques: BloqueSemana[] } {
+  const columnas = new Map(dias.map((d, i) => [d.getTime(), i]));
+  const crudos = items
+    .filter((item) => columnas.has(item.fecha.getTime()))
+    .map((item) => {
+      const inicio = minutos(item.hora);
+      const fin = item.horaFin ? minutos(item.horaFin) : inicio + 60;
+      return { item, columna: columnas.get(item.fecha.getTime())!, inicio, fin: fin > inicio ? fin : 24 * 60 };
+    })
+    .sort((a, b) => a.columna - b.columna || a.inicio - b.inicio);
+
+  const desdeHora = Math.min(8, ...crudos.map((c) => Math.floor(c.inicio / 60)));
+  const hastaHora = Math.max(22, ...crudos.map((c) => Math.ceil(c.fin / 60)));
+
+  // Carriles: grupos de ítems que se superponen (en cadena) dentro del mismo día.
+  const bloques: BloqueSemana[] = [];
+  let grupo: (typeof crudos[number] & { carril: number })[] = [];
+  let finGrupo = -1;
+  const cerrar = () => {
+    const carriles = Math.max(0, ...grupo.map((g) => g.carril)) + 1;
+    for (const g of grupo) {
+      bloques.push({
+        item: g.item, columna: g.columna, inicioMin: g.inicio - desdeHora * 60, duracionMin: g.fin - g.inicio,
+        carril: g.carril, carriles,
+      });
+    }
+    grupo = [];
+  };
+  for (const c of crudos) {
+    if (grupo.length && (c.columna !== grupo[0].columna || c.inicio >= finGrupo)) cerrar();
+    const ocupados = new Set(grupo.filter((g) => g.fin > c.inicio).map((g) => g.carril));
+    let carril = 0;
+    while (ocupados.has(carril)) carril++;
+    grupo.push({ ...c, carril });
+    finGrupo = grupo.length === 1 ? c.fin : Math.max(finGrupo, c.fin);
+  }
+  if (grupo.length) cerrar();
+  return { desdeHora, hastaHora, bloques };
 }

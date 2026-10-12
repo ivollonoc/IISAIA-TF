@@ -1,30 +1,29 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Actividad, Club } from "@prisma/client";
+import type { Club } from "@prisma/client";
 import { calendarioClub, calendarioSocio } from "@/modules/calendario/service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 
 const dia = (a: number, m: number, d: number) => new Date(Date.UTC(a, m - 1, d));
-const desdeSiempre = dia(2026, 1, 1);
 const semana = [dia(2026, 10, 12), dia(2026, 10, 18)] as const; // lunes a domingo
 
 let club: Club;
-let natacion: Actividad;
-let yoga: Actividad;
+let natacion: { id: string };
+let yoga: { id: string };
 
 beforeEach(async () => {
   await resetDb();
   club = await f.crearClub();
-  natacion = await f.crearActividad(club.id, { nombre: "Natación", diaSemana: 3, hora: "19:00", createdAt: desdeSiempre });
-  yoga = await f.crearActividad(club.id, { nombre: "Yoga", diaSemana: 6, hora: "10:00", createdAt: desdeSiempre });
+  natacion = await f.crearActividad(club.id, { nombre: "Natación", horarios: [{ diaSemana: 3, hora: "19:00" }] });
+  yoga = await f.crearActividad(club.id, { nombre: "Yoga", horarios: [{ diaSemana: 6, hora: "10:00" }] });
 });
 
 describe("calendarioClub", () => {
   it("incluye todas las actividades activas y los eventos del club, no los de otro club", async () => {
-    await f.crearActividad(club.id, { nombre: "Cerrada", diaSemana: 3, activa: false, createdAt: desdeSiempre });
+    await f.crearActividad(club.id, { nombre: "Cerrada", horarios: [{ diaSemana: 3, hora: "18:00" }], activa: false });
     await f.crearEvento(club.id, { titulo: "Asamblea", fecha: dia(2026, 10, 13), hora: "20:00" });
     const otro = await f.crearClub();
-    await f.crearActividad(otro.id, { nombre: "Ajena", diaSemana: 3, createdAt: desdeSiempre });
+    await f.crearActividad(otro.id, { nombre: "Ajena", horarios: [{ diaSemana: 3, hora: "18:00" }] });
     await f.crearEvento(otro.id, { titulo: "Evento ajeno", fecha: dia(2026, 10, 13) });
 
     const items = await calendarioClub(club.id, ...semana);
@@ -43,6 +42,14 @@ describe("calendarioClub", () => {
     expect(items.find((i) => i.estado === "REPROGRAMADA")).toMatchObject({
       titulo: "Natación", fecha: dia(2026, 10, 13), fechaOriginal: dia(2026, 10, 7),
     });
+  });
+
+  it("arma una clase por cada horario de la actividad dentro de su vigencia", async () => {
+    await f.crearActividad(club.id, {
+      nombre: "Funcional", horarios: [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 5, hora: "19:00" }], fechaInicio: dia(2026, 10, 13),
+    });
+    const items = (await calendarioClub(club.id, ...semana)).filter((i) => i.titulo === "Funcional");
+    expect(items.map((i) => i.fecha.getUTCDate())).toEqual([16]);
   });
 
   it("acepta hasta 42 días y rechaza rangos mayores", async () => {

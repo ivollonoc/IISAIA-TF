@@ -61,8 +61,8 @@ export default async function CalendarioAdminPage({
           {clase && (
             <Card title="Clase seleccionada">
               <p className="text-sm text-slate-700">
-                <strong>{clase.actividad.nombre}</strong> · {formatDiaCorto(clase.fecha)} · {clase.actividad.hora}–
-                {horaFin(clase.actividad.hora, clase.actividad.duracionMin)}
+                <strong>{clase.actividad.nombre}</strong> · {formatDiaCorto(clase.fecha)} · {clase.horario.hora}–
+                {horaFin(clase.horario.hora, clase.horario.duracionMin)}
               </p>
               {!clase.excepcion && <p className="mt-1 text-sm text-slate-500">{estadoClase(null)}</p>}
               {clase.excepcion ? (
@@ -91,7 +91,7 @@ export default async function CalendarioAdminPage({
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <Campo label="Nueva fecha" name="nuevaFecha" type="date" min={claveDia(hoy)} required />
-                      <Campo label="Nueva hora" name="nuevaHora" type="time" defaultValue={clase.actividad.hora} required />
+                      <Campo label="Nueva hora" name="nuevaHora" type="time" defaultValue={clase.horario.hora} required />
                     </div>
                     <Campo label="Motivo" name="motivo" required />
                     <Boton variante="secundario">Reprogramar</Boton>

@@ -26,8 +26,8 @@ export function calendarioDemo(hoy: Date = new Date()) {
   const { anio, mes } = fechaLocal(hoy);
   const creadas = new Date(Date.UTC(anio, mes - 2, 1));
   const hoyDia = inicioDelDia(hoy);
-  const [suspendida] = clasesEnRango(
-    { diaSemana: DIA_FUTBOL, createdAt: creadas },
+  const [{ fecha: suspendida }] = clasesEnRango(
+    { horarios: [{ diaSemana: DIA_FUTBOL, hora: "18:00", duracionMin: 60 }], fechaInicio: creadas, fechaFin: null },
     hoyDia,
     new Date(hoyDia.getTime() + 6 * DIA_MS),
   );
