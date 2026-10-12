@@ -16,6 +16,12 @@ App web multi-tenant para que clubes deportivos gestionen socios, cuotas y activ
 | Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · **Agenda** (vistas semana, mes y lista): actividades recurrentes con uno o más días por semana, vigencia, cupo y arancel mensual; eventos puntuales informativos o con inscripción (cupo y precio opcionales); suspender o reprogramar clases; ver inscriptos y lista de espera · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
 | Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · **Agenda**: sus clases y eventos (semana o mes), inscribirse/cancelar actividades y eventos (respeta cupo; los pagos suman su cargo) y anotarse en la lista de espera de los llenos · próximos 7 días en su inicio |
 
+Los tres roles tienen una **bandeja de avisos** (campana en el encabezado y franja con el último aviso sin leer). Los avisos se generan solos: pago acreditado, cargos del mes listos para pagar, clases suspendidas o reprogramadas, actividades y eventos nuevos o cancelados, cambios de horario y lugares liberados para quienes están en lista de espera. El admin de club también envía avisos manuales (a todos o a los inscriptos de una actividad) y elige las vías: in-app siempre, más mail y/o SMS. El admin general avisa a los admins de club.
+
+### Avisos por mail y SMS (simulados)
+
+Los mails y SMS quedan en el **buzón de salida** (pestaña Avisos del club y `/admin/avisos`). Con `RESEND_API_KEY` y `EMAIL_FROM` los mails salen de verdad por [Resend](https://resend.com); los SMS siempre son simulados.
+
 ### Pagos online (simulados)
 
 El checkout usa la pasarela configurada en `PASARELA` (por defecto `simulada`). Tarjetas de prueba: `4000 0000 0000 0001` (aprobada) y `4000 0000 0000 0002` (rechazada por fondos insuficientes), con cualquier vencimiento futuro y CVV de 3 dígitos. Nunca se guardan el número completo ni el CVV. La integración con Mercado Pago está preparada (`src/modules/pagos-online/mercadopago.ts`) pero no implementada.

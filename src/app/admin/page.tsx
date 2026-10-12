@@ -15,6 +15,9 @@ export default async function AdminGeneralPage({ searchParams }: { searchParams:
     <>
       <Titulo sub="Clubes afiliados a la plataforma">Admin general</Titulo>
       <Aviso {...leerAviso(msg)} />
+      <Link href="/admin/avisos" className="mb-4 inline-block text-sm font-medium text-emerald-700 underline">
+        Avisos a los clubes y buzón de salida →
+      </Link>
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Stat label={`Cobrado ${resumen.periodo}`} valor={formatPesos(resumen.cobradoMes)} />
         <Stat label="Deuda vencida" valor={formatPesos(resumen.deudaVencida)} />

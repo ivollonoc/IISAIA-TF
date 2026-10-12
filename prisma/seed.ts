@@ -5,6 +5,7 @@
 import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
 import { DIA_MS, inicioDelDia } from "../src/lib/periodo";
+import { formatDia, formatPesos } from "../src/lib/format";
 import { calendarioDemo, escenarioDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
@@ -20,7 +21,9 @@ async function main() {
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });
 
-  const club = await prisma.club.create({ data: { nombre: "Club Atlético Demo", slug: "demo", diaVencimiento } });
+  const club = await prisma.club.create({
+    data: { nombre: "Club Atlético Demo", slug: "demo", diaVencimiento, canales: ["IN_APP", "EMAIL"] },
+  });
   const admin = await prisma.usuario.create({
     data: { email: "admin@demo.club", nombre: "Admin Demo", rol: "ADMIN_CLUB", clubId: club.id },
   });
@@ -33,7 +36,7 @@ async function main() {
   });
 
   const base = [
-    { nombre: "Lucía", apellido: "Gómez", dni: "30111222", tipo: activo, usuarioId: socioUser.id, email: "socio@demo.club" },
+    { nombre: "Lucía", apellido: "Gómez", dni: "30111222", tipo: activo, usuarioId: socioUser.id, email: "socio@demo.club", telefono: "+54 11 5555-0101" },
     { nombre: "Martín", apellido: "Pérez", dni: "28999888", tipo: activo },
     { nombre: "Sofía", apellido: "Díaz", dni: "45123456", tipo: cadete },
     { nombre: "Juan", apellido: "López", dni: "33444555", tipo: activo },
@@ -46,7 +49,7 @@ async function main() {
       await prisma.socio.create({
         data: {
           clubId: club.id, nroSocio: i + 1, nombre: s.nombre, apellido: s.apellido, dni: s.dni,
-          email: s.email ?? null, tipoSocioId: s.tipo.id, usuarioId: s.usuarioId ?? null,
+          email: s.email ?? null, telefono: s.telefono ?? null, tipoSocioId: s.tipo.id, usuarioId: s.usuarioId ?? null,
         },
       }),
     );
@@ -155,6 +158,31 @@ async function main() {
       conInscripcion: true, precio: 15000,
     },
   });
+
+  // Avisos de ejemplo para Lucía (sin leer), con su copia por mail en el buzón de salida.
+  const deudaActual = cuota(lucia) + natacion.arancel;
+  const avisos = [
+    {
+      tipo: "CARGOS_GENERADOS", titulo: `Ya podés pagar ${actual}`, link: "/c/demo/socio",
+      cuerpo: `Tenés ${formatPesos(deudaActual)} a pagar, vence el ${formatDia(vencimiento(actual, diaVencimiento))}.`,
+    },
+    {
+      tipo: "EVENTO_NUEVO", titulo: "Nuevo evento: Cena anual", link: "/c/demo/socio/actividades",
+      cuerpo: "Cena de fin de temporada en la Sede social. Inscribite desde Actividades y eventos.",
+    },
+  ];
+  for (const [i, a] of avisos.entries()) {
+    const createdAt = new Date(Date.now() - (avisos.length - i) * 60_000);
+    await prisma.notificacion.create({ data: { ...a, usuarioId: socioUser.id, clubId: club.id, createdAt } });
+    await prisma.mensajeSaliente.create({
+      data: {
+        clubId: club.id, canal: "EMAIL", destino: "socio@demo.club", asunto: a.titulo, proveedor: "simulado", createdAt,
+        cuerpo: `${a.cuerpo}
+
+Ver en la app: ${a.link}`,
+      },
+    });
+  }
 
   console.log(`Seed OK. Logins demo: ${superEmail} | admin@demo.club | socio@demo.club`);
 }

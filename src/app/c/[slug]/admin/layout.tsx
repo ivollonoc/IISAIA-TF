@@ -23,6 +23,7 @@ export default async function AdminClubLayout({
           { href: `${base}/cuenta`, label: "Cuenta corriente" },
           { href: `${base}/tipos`, label: "Tipos de socio" },
           { href: `${base}/agenda`, label: "Agenda" },
+          { href: `${base}/avisos`, label: "Avisos" },
         ]}
       />
       {children}

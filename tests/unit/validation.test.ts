@@ -28,6 +28,12 @@ describe("socioSchema", () => {
     expect(socioSchema.safeParse({ ...valido, dni: "123" }).success).toBe(false);
   });
 
+  it("el teléfono es opcional: vacío → null; acepta +, espacios y guiones; rechaza letras", () => {
+    expect(socioSchema.parse(valido).telefono).toBeNull();
+    expect(socioSchema.parse({ ...valido, telefono: "+54 11 5555-0001" }).telefono).toBe("+54 11 5555-0001");
+    expect(socioSchema.safeParse({ ...valido, telefono: "llamame" }).success).toBe(false);
+  });
+
   it("rechaza email mal formado", () => {
     expect(socioSchema.safeParse({ ...valido, email: "no-es-email" }).success).toBe(false);
   });
