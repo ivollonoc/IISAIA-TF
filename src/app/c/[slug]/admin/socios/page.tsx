@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireClub } from "@/lib/session";
 import { listarSocios } from "@/server/socios";
-import { listarTipos } from "@/server/tipos";
+import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { Aviso, Badge, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearSocioAction } from "../actions";
 import { SocioForm } from "./SocioForm";

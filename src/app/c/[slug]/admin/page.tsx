@@ -1,5 +1,5 @@
 import { requireClub } from "@/lib/session";
-import { resumenClub } from "@/server/pagos";
+import { resumenClub } from "@/modules/cuotas/pagos.service";
 import { formatPesos } from "@/lib/format";
 import { Stat, Titulo } from "@/components/ui";
 

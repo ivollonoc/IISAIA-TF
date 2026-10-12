@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/server/socios";
-import { listarTipos } from "@/server/tipos";
+import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { DomainError } from "@/lib/errors";
 import { periodoActual } from "@/lib/periodo";
 import { formatFecha, formatPesos } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Selector, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { actualizarSocioAction, cambiarEstadoSocioAction, registrarPagoAction } from "../../actions";
+import { registrarPagoAction } from "@/modules/cuotas/actions";
+import { actualizarSocioAction, cambiarEstadoSocioAction } from "../../actions";
 import { SocioForm } from "../SocioForm";
 
 export default async function SocioDetallePage({

@@ -1,6 +1,6 @@
 // Tipos de socio y su cuota mensual, por club.
 import { db } from "@/lib/db";
-import { tipoSocioSchema } from "@/lib/validation";
+import { tipoSocioSchema } from "./schema";
 
 export function listarTipos(clubId: string) {
   return db.tipoSocio.findMany({

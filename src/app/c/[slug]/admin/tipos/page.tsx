@@ -1,8 +1,8 @@
 import { requireClub } from "@/lib/session";
-import { listarTipos } from "@/server/tipos";
+import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { formatPesos } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { crearTipoAction } from "../actions";
+import { crearTipoAction } from "@/modules/cuotas/actions";
 
 export default async function TiposPage({
   params,

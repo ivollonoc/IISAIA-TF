@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { crearTipo, listarTipos } from "@/server/tipos";
+import { crearTipo, listarTipos } from "@/modules/cuotas/tipos.service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 

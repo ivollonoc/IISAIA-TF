@@ -18,3 +18,9 @@ export async function ejecutar(ruta: string, fn: () => Promise<unknown>): Promis
   revalidatePath(ruta);
   redirect(error ? `${ruta}?error=${encodeURIComponent(error)}` : `${ruta}?ok=1`);
 }
+
+/** Ruta base del área de administración de un club. */
+export const rutaAdmin = (slug: string) => `/c/${slug}/admin`;
+
+/** Campos de un formulario como objeto plano, para validar con Zod en el servicio. */
+export const datos = (formData: FormData) => Object.fromEntries(formData);

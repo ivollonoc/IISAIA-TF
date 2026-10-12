@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import type { Club } from "@prisma/client";
 import { db } from "@/lib/db";
 import { periodoActual } from "@/lib/periodo";
-import { registrarPago, resumenClub } from "@/server/pagos";
+import { registrarPago, resumenClub } from "@/modules/cuotas/pagos.service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 

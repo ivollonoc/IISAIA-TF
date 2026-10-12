@@ -2,7 +2,7 @@
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { periodoActual } from "@/lib/periodo";
-import { pagoSchema } from "@/lib/validation";
+import { pagoSchema } from "./schema";
 
 export async function registrarPago(clubId: string, input: unknown) {
   const data = pagoSchema.parse(input);
