@@ -5,8 +5,7 @@
 import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
 import { DIA_MS, inicioDelDia } from "../src/lib/periodo";
-import { clasesEnRango } from "../src/modules/calendario/reglas";
-import { escenarioDemo } from "./escenario-demo";
+import { calendarioDemo, escenarioDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
 
@@ -16,6 +15,7 @@ async function main() {
 
   // anterior = período ya vencido, actual = período por vencer (nombres del caso habitual).
   const { vencido: anterior, porVencer: actual, diaVencimiento } = escenarioDemo();
+  const demo = calendarioDemo();
 
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });
@@ -56,12 +56,12 @@ async function main() {
   const cuota = (s: Socio) => (s.tipoSocioId === activo.id ? activo.cuotaMensual : cadete.cuotaMensual);
 
   const futbol = await prisma.actividad.create({
-    data: { clubId: club.id, nombre: "Fútbol infantil", diaSemana: 1, hora: "18:00", cupo: 20, arancel: 6000 },
+    data: { clubId: club.id, nombre: "Fútbol infantil", diaSemana: 1, hora: "18:00", cupo: 20, arancel: 6000, createdAt: demo.creadas },
   });
   const natacion = await prisma.actividad.create({
-    data: { clubId: club.id, nombre: "Natación", diaSemana: 3, hora: "19:00", cupo: 2, arancel: 5000 },
+    data: { clubId: club.id, nombre: "Natación", diaSemana: 3, hora: "19:00", cupo: 2, arancel: 5000, createdAt: demo.creadas },
   });
-  await prisma.actividad.create({ data: { clubId: club.id, nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 } });
+  await prisma.actividad.create({ data: { clubId: club.id, nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15, createdAt: demo.creadas } });
 
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: sofia.id } });
   await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: natacion.id, socioId: lucia.id } });
@@ -115,19 +115,16 @@ async function main() {
     },
   });
 
-  // Calendario: una clase de Natación suspendida y una de Fútbol reprogramada dentro de los
-  // próximos 7 días, un evento para todo el club y otro solo para Natación.
+  // Calendario (ver calendarioDemo): Fútbol suspendido esta semana y reprogramado la siguiente;
+  // un evento para todo el club y otro solo para Natación, dentro de los próximos 7 días.
   const hoyDia = inicioDelDia();
-  const proximaClase = (a: { diaSemana: number; createdAt: Date }) =>
-    clasesEnRango(a, hoyDia, new Date(hoyDia.getTime() + 6 * DIA_MS))[0];
   await prisma.excepcionClase.create({
-    data: { clubId: club.id, actividadId: natacion.id, fecha: proximaClase(natacion), tipo: "SUSPENDIDA", motivo: "Feriado" },
+    data: { clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.suspendida, tipo: "SUSPENDIDA", motivo: "Feriado" },
   });
-  const futbolOriginal = proximaClase(futbol);
   await prisma.excepcionClase.create({
     data: {
-      clubId: club.id, actividadId: futbol.id, fecha: futbolOriginal, tipo: "REPROGRAMADA",
-      nuevaFecha: new Date(futbolOriginal.getTime() + DIA_MS), nuevaHora: "19:00", motivo: "Cancha ocupada",
+      clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.reprogramada.fecha, tipo: "REPROGRAMADA",
+      nuevaFecha: demo.futbol.reprogramada.nuevaFecha, nuevaHora: "19:00", motivo: "Cancha ocupada",
     },
   });
   await prisma.evento.create({
