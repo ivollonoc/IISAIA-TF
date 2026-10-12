@@ -94,9 +94,13 @@ Autenticada con la sesión JWT de NextAuth.
 ## Tests
 
 ```bash
-npm test          # unitarios
+npm test          # unitarios + integración (requiere Postgres: docker compose up -d db)
+npm run test:unit # solo unitarios, sin base
+npm run test:int  # solo integración, contra gestion_socios_test (ver .env.test)
 npm run typecheck # tipos
 ```
+
+Los tests de integración recrean la base gestion_socios_test en cada corrida y vacían las tablas antes de cada test; se niegan a correr contra una base cuyo nombre no termine en _test.
 
 El CI de GitHub Actions corre typecheck, tests y build en cada push.
 
