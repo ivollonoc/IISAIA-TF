@@ -126,3 +126,23 @@ export async function cuentaClub(clubId: string, hoy: Date = new Date()) {
 }
 
 export type CuentaClubData = Awaited<ReturnType<typeof cuentaClub>>;
+
+/** Consolidado para el admin general: cobrado del mes y deuda vencida, por club y en total. */
+export async function resumenPlataforma(hoy: Date = new Date()) {
+  const periodo = periodoActual(hoy);
+  const { desde, hasta } = rangoDelMes(periodo);
+  const vencidoAntesDeHoy = { estado: "PENDIENTE" as const, vencimiento: { lt: inicioDelDia(hoy) } };
+  const [cobrado, vencida, sociosMorosos] = await Promise.all([
+    db.pago.groupBy({ by: ["clubId"], where: { fecha: { gte: desde, lt: hasta } }, _sum: { monto: true } }),
+    db.cargo.groupBy({ by: ["clubId"], where: vencidoAntesDeHoy, _sum: { monto: true } }),
+    db.socio.count({ where: { activo: true, cargos: { some: vencidoAntesDeHoy } } }),
+  ]);
+
+  const porClub: Record<string, { cobradoMes: number; deudaVencida: number }> = {};
+  const de = (clubId: string) => (porClub[clubId] ??= { cobradoMes: 0, deudaVencida: 0 });
+  for (const c of cobrado) de(c.clubId).cobradoMes = c._sum.monto ?? 0;
+  for (const v of vencida) de(v.clubId).deudaVencida = v._sum.monto ?? 0;
+  const total = (k: "cobradoMes" | "deudaVencida") => Object.values(porClub).reduce((s, c) => s + c[k], 0);
+
+  return { periodo, cobradoMes: total("cobradoMes"), deudaVencida: total("deudaVencida"), sociosMorosos, porClub };
+}

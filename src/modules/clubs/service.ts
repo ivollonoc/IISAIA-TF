@@ -39,3 +39,7 @@ export function actualizarConfigClub(clubId: string, input: unknown) {
   const data = configClubSchema.parse(input);
   return db.club.update({ where: { id: clubId }, data });
 }
+
+export function obtenerClubPorSlug(slug: string) {
+  return db.club.findUnique({ where: { slug } });
+}
