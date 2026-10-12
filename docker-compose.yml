@@ -25,7 +25,8 @@ services:
     env_file: .env.example
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/gestion_socios
-    command: sh -c "npx prisma db push && npm run db:seed && npm run dev"
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/gestion_socios
+    command: sh -c "npx prisma migrate deploy && npm run db:seed && npm run dev"
 
 volumes:
   pgdata:

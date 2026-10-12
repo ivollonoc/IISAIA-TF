@@ -54,13 +54,23 @@ docker compose up --build
 
 ### Opción C — Node local
 
+Requiere Node 22 (`nvm use` toma la versión de `.nvmrc`).
+
 ```bash
 cp .env.example .env
 docker compose up -d db
 npm install
-npm run db:push && npm run db:seed
+npm run db:deploy && npm run db:seed
 npm run dev
 ```
+
+### Migraciones
+
+El esquema se versiona con `prisma migrate` (carpeta `prisma/migrations`).
+
+- Para cambiar el modelo: editar `prisma/schema.prisma` y correr `npm run db:migrate -- --name <cambio>`; se genera una migración SQL nueva para commitear.
+- `npm run db:deploy` aplica las migraciones pendientes (CI, contenedores, producción).
+- Si tu base local fue creada con el antiguo `db push`, `db:deploy` falla con P3005: recreala con `npx prisma migrate reset` y `npm run db:seed` (con Docker: `docker compose down -v` y volver a levantar).
 
 ### Usuarios demo (con `DEMO_LOGIN=true`)
 
@@ -92,8 +102,25 @@ El CI de GitHub Actions corre typecheck, tests y build en cada push.
 
 ## Deploy (Vercel + Neon)
 
-1. Crear una base Postgres en [Neon](https://neon.tech) y copiar la connection string.
-2. Importar el repo en Vercel y cargar las variables de `.env.example` (`DATABASE_URL`, `NEXTAUTH_SECRET`, `SUPERADMIN_EMAIL`, Google opcional).
-3. Desde una máquina con acceso a la base: `npx prisma db push && npm run db:seed`.
+1. Crear una base Postgres en [Neon](https://neon.tech) y copiar dos connection strings: la **con pooler** (host con `-pooler`) para `DATABASE_URL` y la **directa** para `DIRECT_URL`.
+2. Importar el repo en Vercel y cargar las variables de `.env.example` (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `SUPERADMIN_EMAIL`, Google opcional).
+3. Aplicar migraciones y datos demo desde una máquina con acceso a la base, pasando la URL **directa en línea** (nunca en `.env`, que apunta siempre a localhost):
+
+   ```bash
+   DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npm run db:deploy
+   DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npm run db:seed
+   ```
+
+Las migraciones no corren en el build de Vercel: los deploys de preview comparten la base con producción.
+
+**Pasaje a migraciones (una sola vez, base creada con `db push`; solo tiene datos demo):**
+
+```bash
+DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate reset --force --skip-seed
+DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npm run db:seed
+DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate status   # "Database schema is up to date!"
+```
+
+Opcional: crear antes un branch en Neon como respaldo.
 
 > `DEMO_LOGIN` permite entrar sin contraseña: usarlo solo para demos.
