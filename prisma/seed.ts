@@ -4,6 +4,8 @@
 // Pagos en efectivo, transferencia y online.
 import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
+import { DIA_MS, inicioDelDia } from "../src/lib/periodo";
+import { clasesEnRango } from "../src/modules/calendario/reglas";
 import { escenarioDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
@@ -110,6 +112,34 @@ async function main() {
     data: {
       clubId: club.id, socioId: lucia.id, cargoIds: online.cargos.map((c) => c.id), monto: online.pago.monto,
       estado: "APROBADO", pasarela: "simulada", referenciaExterna: "SIM-seed", ultimos4: "0001", pagoId: online.pago.id,
+    },
+  });
+
+  // Calendario: una clase de Natación suspendida y una de Fútbol reprogramada dentro de los
+  // próximos 7 días, un evento para todo el club y otro solo para Natación.
+  const hoyDia = inicioDelDia();
+  const proximaClase = (a: { diaSemana: number; createdAt: Date }) =>
+    clasesEnRango(a, hoyDia, new Date(hoyDia.getTime() + 6 * DIA_MS))[0];
+  await prisma.excepcionClase.create({
+    data: { clubId: club.id, actividadId: natacion.id, fecha: proximaClase(natacion), tipo: "SUSPENDIDA", motivo: "Feriado" },
+  });
+  const futbolOriginal = proximaClase(futbol);
+  await prisma.excepcionClase.create({
+    data: {
+      clubId: club.id, actividadId: futbol.id, fecha: futbolOriginal, tipo: "REPROGRAMADA",
+      nuevaFecha: new Date(futbolOriginal.getTime() + DIA_MS), nuevaHora: "19:00", motivo: "Cancha ocupada",
+    },
+  });
+  await prisma.evento.create({
+    data: {
+      clubId: club.id, titulo: "Asamblea anual", fecha: new Date(hoyDia.getTime() + 3 * DIA_MS), hora: "20:00",
+      lugar: "Sede social", descripcion: "Balance y elección de autoridades",
+    },
+  });
+  await prisma.evento.create({
+    data: {
+      clubId: club.id, titulo: "Clínica de natación", fecha: new Date(hoyDia.getTime() + 5 * DIA_MS), hora: "10:00",
+      lugar: "Pileta", actividadId: natacion.id,
     },
   });
 

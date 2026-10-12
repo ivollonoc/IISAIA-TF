@@ -13,8 +13,8 @@ App web multi-tenant para que clubes deportivos gestionen socios, cuotas y activ
 | Rol | Puede |
 |---|---|
 | Admin general | Crear clubes y asignar su administrador · ver lo cobrado y la deuda vencida de cada club y el consolidado · ver la cuenta de un club en solo lectura |
-| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · actividades con cupo y arancel mensual · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
-| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · inscribirse/cancelar actividades (respeta cupo; las pagas suman su arancel) |
+| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · actividades con cupo y arancel mensual · calendario: suspender o reprogramar clases y publicar eventos · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
+| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · inscribirse/cancelar actividades (respeta cupo; las pagas suman su arancel) · ver su calendario y los próximos 7 días |
 
 ### Pagos online (simulados)
 
@@ -33,7 +33,7 @@ src/
     admin/         panel del admin general
     c/[slug]/      espacio de cada club: /admin y /socio
     api/           API REST + endpoints de NextAuth
-  modules/         un módulo por dominio: clubs, cuotas, socios, actividades, cuenta-corriente, pagos-online
+  modules/         un módulo por dominio: clubs, cuotas, socios, actividades, cuenta-corriente, pagos-online, calendario
     <modulo>/      service.ts (lógica; recibe clubId) · schema.ts (Zod) · actions.ts (Server Actions) · components/
   lib/             transversal: auth, sesión, permisos, helpers de validación y de actions, errores
   components/      UI base reutilizable
