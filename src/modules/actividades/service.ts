@@ -54,7 +54,7 @@ export async function editarActividad(clubId: string, actividadId: string, input
 
     const vigencia = { fechaInicio: data.fechaInicio, fechaFin: data.fechaFin, horarios: horarios };
     const futuras = await tx.excepcionClase.findMany({ where: { actividadId, fecha: { gte: inicioDelDia(hoy) } } });
-    const huerfanas = futuras.filter((e) => !horarioDe(vigencia, e.fecha)).map((e) => e.id);
+    const huerfanas = futuras.filter((e) => !horarioDe(vigencia, e.fecha, e.hora)).map((e) => e.id);
     if (huerfanas.length) await tx.excepcionClase.deleteMany({ where: { id: { in: huerfanas } } });
     return { excepcionesBorradas: huerfanas.length };
   });

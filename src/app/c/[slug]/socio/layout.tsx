@@ -19,7 +19,8 @@ export default async function SocioLayout({
       <Tabs
         items={[
           { href: base, label: "Mi cuenta" },
-          { href: `${base}/agenda`, label: "Agenda" },
+          { href: `${base}/actividades`, label: "Actividades y eventos" },
+          { href: `${base}/calendario`, label: "Calendario" },
         ]}
       />
       {children}

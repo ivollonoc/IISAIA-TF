@@ -128,6 +128,7 @@ export function crearExcepcion(
   actividadId: string,
   over: {
     fecha?: Date;
+    hora?: string;
     tipo?: "SUSPENDIDA" | "REPROGRAMADA";
     nuevaFecha?: Date | null;
     nuevaHora?: string | null;
@@ -135,7 +136,7 @@ export function crearExcepcion(
   } = {},
 ) {
   return db.excepcionClase.create({
-    data: { clubId, actividadId, fecha: new Date(Date.UTC(2026, 9, 21)), tipo: "SUSPENDIDA", motivo: "Feriado", ...over },
+    data: { clubId, actividadId, fecha: new Date(Date.UTC(2026, 9, 21)), hora: "19:00", tipo: "SUSPENDIDA", motivo: "Feriado", ...over },
   });
 }
 

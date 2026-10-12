@@ -46,20 +46,20 @@ export async function calendarioSocio(clubId: string, socioId: string, desde: Da
 
 const esPasada = (fecha: Date, hoy: Date) => fecha.getTime() < inicioDelDia(hoy).getTime();
 
-/** Verifica que (actividad, fecha) sea una clase modificable y devuelve el horario de ese día. */
-async function claseModificable(clubId: string, actividadId: string, fecha: Date, hoy: Date) {
+/** Verifica que (actividad, fecha, hora) sea una clase modificable y devuelve su horario. */
+async function claseModificable(clubId: string, actividadId: string, fecha: Date, hora: string, hoy: Date) {
   const actividad = await db.actividad.findFirst({
     where: { id: actividadId, clubId, activa: true },
     include: { horarios: true },
   });
   if (!actividad) throw new DomainError("Actividad no encontrada");
-  const horario = horarioDe(actividad, fecha);
+  const horario = horarioDe(actividad, fecha, hora);
   if (!horario) throw new DomainError("Esa fecha no corresponde a una clase de la actividad");
   if (esPasada(fecha, hoy)) throw new DomainError("No se pueden modificar clases pasadas");
   return horario;
 }
 
-/** Crea la excepción; si la clase ya tenía una (UNIQUE actividad+fecha), avisa que hay que restablecerla. */
+/** Crea la excepción; si la clase ya tenía una (UNIQUE actividad+fecha+hora), avisa que hay que restablecerla. */
 async function guardarExcepcion(data: Prisma.ExcepcionClaseUncheckedCreateInput) {
   try {
     return await db.excepcionClase.create({ data });
@@ -73,19 +73,21 @@ async function guardarExcepcion(data: Prisma.ExcepcionClaseUncheckedCreateInput)
 
 export async function suspenderClase(clubId: string, input: unknown, hoy: Date = new Date()) {
   const data = suspenderClaseSchema.parse(input);
-  await claseModificable(clubId, data.actividadId, data.fecha, hoy);
-  return guardarExcepcion({ clubId, actividadId: data.actividadId, fecha: data.fecha, tipo: "SUSPENDIDA", motivo: data.motivo });
+  await claseModificable(clubId, data.actividadId, data.fecha, data.hora, hoy);
+  return guardarExcepcion({
+    clubId, actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, tipo: "SUSPENDIDA", motivo: data.motivo,
+  });
 }
 
 export async function reprogramarClase(clubId: string, input: unknown, hoy: Date = new Date()) {
   const data = reprogramarClaseSchema.parse(input);
-  const horario = await claseModificable(clubId, data.actividadId, data.fecha, hoy);
+  const horario = await claseModificable(clubId, data.actividadId, data.fecha, data.hora, hoy);
   if (esPasada(data.nuevaFecha, hoy)) throw new DomainError("La nueva fecha no puede ser pasada");
   if (data.nuevaFecha.getTime() === data.fecha.getTime() && data.nuevaHora === horario.hora) {
     throw new DomainError("Elegí una fecha u hora distinta");
   }
   return guardarExcepcion({
-    clubId, actividadId: data.actividadId, fecha: data.fecha, tipo: "REPROGRAMADA",
+    clubId, actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, tipo: "REPROGRAMADA",
     nuevaFecha: data.nuevaFecha, nuevaHora: data.nuevaHora, motivo: data.motivo,
   });
 }
@@ -98,17 +100,21 @@ export async function restablecerClase(clubId: string, excepcionId: string, hoy:
   await db.excepcionClase.delete({ where: { id: excepcion.id } });
 }
 
-/** Clase elegida en la UI ("<actividadId>:<AAAA-MM-DD>"); null si la clave no es una clase del club. */
+/** Clave de una clase en la URL: "<actividadId>:<AAAA-MM-DD>:<HH:MM>". */
+export const claveClase = (actividadId: string, fecha: string, hora: string) => `${actividadId}:${fecha}:${hora}`;
+
+/** Clase elegida en la UI (ver claveClase); null si la clave no es una clase del club. */
 export async function obtenerClase(clubId: string, clave: string) {
-  const [actividadId, textoFecha] = clave.split(":");
-  const fecha = textoFecha ? parsearDia(textoFecha) : null;
-  if (!actividadId || !fecha) return null;
+  const m = /^([^:]+):(\d{4}-\d{2}-\d{2}):(\d{2}:\d{2})$/.exec(clave);
+  const fecha = m ? parsearDia(m[2]) : null;
+  if (!m || !fecha) return null;
+  const [, actividadId, , hora] = m;
   const actividad = await db.actividad.findFirst({
     where: { id: actividadId, clubId, activa: true },
     include: { horarios: true },
   });
-  const horario = actividad && horarioDe(actividad, fecha);
+  const horario = actividad && horarioDe(actividad, fecha, hora);
   if (!actividad || !horario) return null;
-  const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha: { actividadId, fecha } } });
+  const excepcion = await db.excepcionClase.findUnique({ where: { actividadId_fecha_hora: { actividadId, fecha, hora } } });
   return { actividad, horario, fecha, excepcion };
 }

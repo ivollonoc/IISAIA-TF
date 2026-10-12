@@ -155,7 +155,8 @@ model Actividad {
   @@index([clubId])
 }
 
-// Un horario por día de la semana: (actividadId, fecha) sigue identificando una clase.
+// Horarios semanales: un día puede tener varios (lunes 9:00 y lunes 17:00). Una clase se
+// identifica por (actividadId, fecha, hora).
 model HorarioActividad {
   id          String    @id @default(cuid())
   actividadId String
@@ -164,7 +165,7 @@ model HorarioActividad {
   hora        String // "HH:MM"
   duracionMin Int       @default(60)
 
-  @@unique([actividadId, diaSemana])
+  @@unique([actividadId, diaSemana, hora])
 }
 
 model Inscripcion {
@@ -241,13 +242,14 @@ model ExcepcionClase {
   actividadId String
   actividad   Actividad     @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   fecha       DateTime // día original de la clase (medianoche UTC)
+  hora        String // hora original de la clase "HH:MM" (un día puede tener varias)
   tipo        TipoExcepcion
   nuevaFecha  DateTime? // solo REPROGRAMADA (medianoche UTC)
   nuevaHora   String? // "HH:MM", solo REPROGRAMADA
   motivo      String
   createdAt   DateTime      @default(now())
 
-  @@unique([actividadId, fecha])
+  @@unique([actividadId, fecha, hora])
   @@index([clubId, fecha])
   @@index([clubId, nuevaFecha])
 }

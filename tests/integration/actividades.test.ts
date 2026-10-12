@@ -29,13 +29,13 @@ beforeEach(async () => {
 
 const socio = (over: { activo?: boolean } = {}) => f.crearSocio(club.id, { tipoSocioId: tipo.id, ...over });
 const form = (over: Record<string, unknown> = {}) => ({
-  nombre: "Natación", cupo: "10", fechaInicio: "2026-10-01", dia_1: "on", hora_1: "19:00", dia_3: "on", hora_3: "19:00",
+  nombre: "Natación", cupo: "10", fechaInicio: "2026-10-01", h_0_dia: "1", h_0_hora: "19:00", h_1_dia: "3", h_1_hora: "19:00",
   ...over,
 });
 
 describe("crear y listar", () => {
   it("crea la actividad con sus horarios", async () => {
-    const a = await crearActividad(club.id, form({ duracion_3: "90", descripcion: "Pileta climatizada" }));
+    const a = await crearActividad(club.id, form({ h_1_dur: "90", descripcion: "Pileta climatizada" }));
     const guardada = await db.actividad.findUniqueOrThrow({ where: { id: a.id }, include: { horarios: { orderBy: { diaSemana: "asc" } } } });
     expect(guardada).toMatchObject({ nombre: "Natación", cupo: 10, descripcion: "Pileta climatizada", fechaInicio: dia(2026, 10, 1), fechaFin: null });
     expect(guardada.horarios.map((h) => [h.diaSemana, h.hora, h.duracionMin])).toEqual([[1, "19:00", 60], [3, "19:00", 90]]);
@@ -55,7 +55,7 @@ describe("crear y listar", () => {
   });
 
   it("rechaza un formulario inválido sin crear nada", async () => {
-    await expect(crearActividad(club.id, form({ hora_1: "25:00" }))).rejects.toBeInstanceOf(ZodError);
+    await expect(crearActividad(club.id, form({ h_0_hora: "25:00" }))).rejects.toBeInstanceOf(ZodError);
     expect(await db.actividad.count()).toBe(0);
   });
 });
@@ -63,7 +63,7 @@ describe("crear y listar", () => {
 describe("editarActividad", () => {
   it("reemplaza horarios y datos", async () => {
     const a = await f.crearActividad(club.id, { horarios: [{ diaSemana: 1, hora: "18:00" }] });
-    await editarActividad(club.id, a.id, form({ nombre: "Natación adultos", cupo: "12", dia_1: undefined, hora_1: undefined, dia_5: "on", hora_5: "08:00" }), hoy);
+    await editarActividad(club.id, a.id, form({ nombre: "Natación adultos", cupo: "12", h_0_dia: undefined, h_0_hora: undefined, h_2_dia: "5", h_2_hora: "08:00" }), hoy);
     const r = await db.actividad.findUniqueOrThrow({ where: { id: a.id }, include: { horarios: { orderBy: { diaSemana: "asc" } } } });
     expect(r.nombre).toBe("Natación adultos");
     expect(r.cupo).toBe(12);
@@ -86,7 +86,7 @@ describe("editarActividad", () => {
     const futuraMiercoles = await f.crearExcepcion(club.id, a.id, { fecha: dia(2026, 10, 21) });
 
     // Se queda solo con los miércoles.
-    const r = await editarActividad(club.id, a.id, form({ dia_1: undefined, hora_1: undefined }), hoy);
+    const r = await editarActividad(club.id, a.id, form({ h_0_dia: undefined, h_0_hora: undefined }), hoy);
 
     expect(r.excepcionesBorradas).toBe(1);
     const quedan = (await db.excepcionClase.findMany()).map((e) => e.id).sort();
@@ -94,10 +94,22 @@ describe("editarActividad", () => {
     expect(quedan).not.toContain(futuraLunes.id);
   });
 
+  it("con dos horarios el mismo día, cambiar uno solo borra la excepción de esa hora", async () => {
+    const a = await f.crearActividad(club.id, { horarios: [{ diaSemana: 1, hora: "09:00" }, { diaSemana: 1, hora: "19:00" }] });
+    const maniana = await f.crearExcepcion(club.id, a.id, { fecha: dia(2026, 10, 19), hora: "09:00" });
+    await f.crearExcepcion(club.id, a.id, { fecha: dia(2026, 10, 19), hora: "19:00" });
+    // Queda lunes 9:00 y el de 19:00 pasa a 20:00.
+    const r = await editarActividad(
+      club.id, a.id, form({ h_0_dia: "1", h_0_hora: "09:00", h_1_dia: "1", h_1_hora: "20:00" }), hoy,
+    );
+    expect(r.excepcionesBorradas).toBe(1);
+    expect((await db.excepcionClase.findMany()).map((e) => e.id)).toEqual([maniana.id]);
+  });
+
   it("borra las excepciones futuras posteriores a la nueva fecha de fin", async () => {
     const a = await f.crearActividad(club.id, { horarios: [{ diaSemana: 3, hora: "19:00" }] });
     await f.crearExcepcion(club.id, a.id, { fecha: dia(2026, 10, 28) });
-    const r = await editarActividad(club.id, a.id, form({ dia_1: undefined, hora_1: undefined, fechaFin: "2026-10-25" }), hoy);
+    const r = await editarActividad(club.id, a.id, form({ h_0_dia: undefined, h_0_hora: undefined, fechaFin: "2026-10-25" }), hoy);
     expect(r.excepcionesBorradas).toBe(1);
   });
 

@@ -66,8 +66,8 @@ export default async function SocioHomePage({
         <div className="lg:col-span-2">
           <Card title="Próximos 7 días">
             <AgendaLista items={agenda} vacio="No tenés clases ni eventos en los próximos 7 días." />
-            <Link href={`/c/${slug}/socio/agenda`} className="mt-4 inline-block text-sm text-emerald-700 underline">
-              Ver agenda
+            <Link href={`/c/${slug}/socio/calendario`} className="mt-4 inline-block text-sm text-emerald-700 underline">
+              Ver calendario
             </Link>
           </Card>
         </div>
@@ -87,7 +87,7 @@ export default async function SocioHomePage({
                 ))}
               </ul>
             )}
-            <Link href={`/c/${slug}/socio/agenda`} className="mt-3 inline-block text-sm text-emerald-700 underline">
+            <Link href={`/c/${slug}/socio/actividades`} className="mt-3 inline-block text-sm text-emerald-700 underline">
               Ver todas las actividades y eventos
             </Link>
           </Card>

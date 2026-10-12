@@ -19,7 +19,7 @@ import { FormActividad, FormEvento } from "@/modules/calendario/components/Formu
 import { NavegacionMesAgenda, NavegacionSemana, SelectorVista } from "@/modules/calendario/components/Navegacion";
 import { obtenerEvento, proximosEventosClub } from "@/modules/calendario/eventos.service";
 import { claveDia, horaFin, parsearDia, semanaDe, semanasDelMes, type ItemCalendario } from "@/modules/calendario/reglas";
-import { calendarioClub, obtenerClase } from "@/modules/calendario/service";
+import { calendarioClub, claveClase, obtenerClase } from "@/modules/calendario/service";
 import { hrefAgenda, vistaDeParams } from "@/modules/calendario/vista";
 import { Aviso, Boton, Card, Tabla, Titulo } from "@/components/ui";
 
@@ -73,7 +73,11 @@ export default async function AgendaAdminPage({
   const hrefItem = (i: ItemCalendario) =>
     i.tipo === "EVENTO"
       ? href({ evento: i.eventoId! })
-      : href({ clase: `${i.actividadId}:${claveDia(i.estado === "REPROGRAMADA" ? i.fechaOriginal! : i.fecha)}` });
+      : href({
+          clase: i.estado === "REPROGRAMADA"
+            ? claveClase(i.actividadId!, claveDia(i.fechaOriginal!), i.horaOriginal!)
+            : claveClase(i.actividadId!, claveDia(i.fecha), i.hora),
+        });
   const clasePasada = clase ? clase.fecha.getTime() < hoy.getTime() : false;
   const nuevo = sp.nuevo === "evento" ? "evento" : "actividad";
   const activas = actividades.filter((a) => a.activa);
@@ -176,7 +180,7 @@ export default async function AgendaAdminPage({
               ) : (
                 <div className="mt-3 flex flex-col gap-5">
                   <form
-                    action={suspenderClaseAction.bind(null, slug, volver, clase.actividad.id, claveDia(clase.fecha))}
+                    action={suspenderClaseAction.bind(null, slug, volver, clase.actividad.id, claveDia(clase.fecha), clase.horario.hora)}
                     className="flex flex-col gap-3"
                   >
                     <label className="flex flex-col gap-1 text-sm">
@@ -186,7 +190,7 @@ export default async function AgendaAdminPage({
                     <Boton variante="peligro">Suspender clase</Boton>
                   </form>
                   <form
-                    action={reprogramarClaseAction.bind(null, slug, volver, clase.actividad.id, claveDia(clase.fecha))}
+                    action={reprogramarClaseAction.bind(null, slug, volver, clase.actividad.id, claveDia(clase.fecha), clase.horario.hora)}
                     className="flex flex-col gap-3 border-t border-slate-100 pt-4"
                   >
                     <div className="grid grid-cols-2 gap-3">

@@ -1,9 +1,8 @@
 // Formularios de alta/edición de actividades (recurrentes) y eventos (puntuales).
 import { Boton, Campo, Selector } from "@/components/ui";
 import { claveDia } from "../reglas";
+import { HorariosEditor } from "./HorariosEditor";
 
-const DIAS_FORM = [1, 2, 3, 4, 5, 6, 0]; // lunes a domingo
-const NOMBRE_DIA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 interface ActividadForm {
   nombre: string;
@@ -15,7 +14,7 @@ interface ActividadForm {
   horarios: { diaSemana: number; hora: string; duracionMin: number }[];
 }
 
-/** Actividad: un renglón por día (marcar el día y poner hora y duración), vigencia, cupo y arancel. */
+/** Actividad: los horarios semanales que tenga (renglones), vigencia, cupo y arancel. */
 export function FormActividad({
   action,
   actividad,
@@ -27,43 +26,11 @@ export function FormActividad({
   hoy: Date;
   boton: string;
 }) {
-  const porDia = new Map(actividad?.horarios.map((h) => [h.diaSemana, h]));
   return (
     <form action={action} className="flex flex-col gap-3">
       <Campo label="Nombre" name="nombre" defaultValue={actividad?.nombre} required />
       <Campo label="Descripción (opcional)" name="descripcion" defaultValue={actividad?.descripcion ?? ""} />
-      <fieldset className="flex flex-col gap-1.5 text-sm">
-        <legend className="mb-1 font-medium text-slate-700">Días y horarios</legend>
-        {DIAS_FORM.map((d) => {
-          const h = porDia.get(d);
-          return (
-            <div key={d} className="grid grid-cols-[6.5rem_1fr_5rem] items-center gap-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" name={`dia_${d}`} defaultChecked={Boolean(h)} className="accent-emerald-700" />
-                {NOMBRE_DIA[d]}
-              </label>
-              <input
-                type="time"
-                name={`hora_${d}`}
-                defaultValue={h?.hora ?? "19:00"}
-                aria-label={`Hora del ${NOMBRE_DIA[d].toLowerCase()}`}
-                className="rounded-lg border border-slate-300 px-2 py-1"
-              />
-              <input
-                type="number"
-                name={`duracion_${d}`}
-                min={15}
-                max={600}
-                defaultValue={h?.duracionMin ?? 60}
-                aria-label={`Duración del ${NOMBRE_DIA[d].toLowerCase()} en minutos`}
-                title="Duración (min)"
-                className="rounded-lg border border-slate-300 px-2 py-1"
-              />
-            </div>
-          );
-        })}
-        <p className="text-xs text-slate-500">Hora de inicio y duración en minutos de cada día marcado.</p>
-      </fieldset>
+      <HorariosEditor iniciales={actividad?.horarios ?? []} />
       <div className="grid grid-cols-2 gap-3">
         <Campo
           label="Desde"

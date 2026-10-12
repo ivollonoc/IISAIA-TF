@@ -8,7 +8,9 @@ const ordenSemana = (diaSemana: number) => (diaSemana + 6) % 7; // lunes primero
 /** "Lun, Mié y Vie 19:00–20:00 · Dom 10:00–11:00": agrupa los días con el mismo horario. */
 export function formatHorarios(horarios: HorarioCalendario[]): string {
   const grupos = new Map<string, number[]>();
-  for (const h of [...horarios].sort((a, b) => ordenSemana(a.diaSemana) - ordenSemana(b.diaSemana))) {
+  const orden = (a: HorarioCalendario, b: HorarioCalendario) =>
+    ordenSemana(a.diaSemana) - ordenSemana(b.diaSemana) || a.hora.localeCompare(b.hora);
+  for (const h of [...horarios].sort(orden)) {
     const rango = `${h.hora}–${horaFin(h.hora, h.duracionMin)}`;
     grupos.set(rango, [...(grupos.get(rango) ?? []), h.diaSemana]);
   }

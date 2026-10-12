@@ -5,23 +5,27 @@
 import { datos, ejecutar } from "@/lib/action";
 import { requireClub } from "@/lib/session";
 import { crearEvento, eliminarEvento } from "./eventos.service";
-import { reprogramarClase, restablecerClase, suspenderClase } from "./service";
+import { claveClase, reprogramarClase, restablecerClase, suspenderClase } from "./service";
 import { rutaAgenda } from "./vista";
 
-export async function suspenderClaseAction(slug: string, volver: string, actividadId: string, fecha: string, formData: FormData) {
+export async function suspenderClaseAction(
+  slug: string, volver: string, actividadId: string, fecha: string, hora: string, formData: FormData,
+) {
   await ejecutar(rutaAgenda(slug, volver), async () => {
     const { club } = await requireClub(slug, "admin");
-    await suspenderClase(club.id, { ...datos(formData), actividadId, fecha });
+    await suspenderClase(club.id, { ...datos(formData), actividadId, fecha, hora });
     return "Clase suspendida";
-  }, rutaAgenda(slug, volver, { clase: `${actividadId}:${fecha}` }));
+  }, rutaAgenda(slug, volver, { clase: claveClase(actividadId, fecha, hora) }));
 }
 
-export async function reprogramarClaseAction(slug: string, volver: string, actividadId: string, fecha: string, formData: FormData) {
+export async function reprogramarClaseAction(
+  slug: string, volver: string, actividadId: string, fecha: string, hora: string, formData: FormData,
+) {
   await ejecutar(rutaAgenda(slug, volver), async () => {
     const { club } = await requireClub(slug, "admin");
-    await reprogramarClase(club.id, { ...datos(formData), actividadId, fecha });
+    await reprogramarClase(club.id, { ...datos(formData), actividadId, fecha, hora });
     return "Clase reprogramada";
-  }, rutaAgenda(slug, volver, { clase: `${actividadId}:${fecha}` }));
+  }, rutaAgenda(slug, volver, { clase: claveClase(actividadId, fecha, hora) }));
 }
 
 export async function restablecerClaseAction(slug: string, volver: string, excepcionId: string) {

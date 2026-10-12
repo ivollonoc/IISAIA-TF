@@ -128,11 +128,11 @@ async function main() {
   // los próximos 7 días; y una cena paga para todo el club, sin cupo, más adelante.
   const hoyDia = inicioDelDia();
   await prisma.excepcionClase.create({
-    data: { clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.suspendida, tipo: "SUSPENDIDA", motivo: "Feriado" },
+    data: { clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.suspendida, hora: "18:00", tipo: "SUSPENDIDA", motivo: "Feriado" },
   });
   await prisma.excepcionClase.create({
     data: {
-      clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.reprogramada.fecha, tipo: "REPROGRAMADA",
+      clubId: club.id, actividadId: futbol.id, fecha: demo.futbol.reprogramada.fecha, hora: "18:00", tipo: "REPROGRAMADA",
       nuevaFecha: demo.futbol.reprogramada.nuevaFecha, nuevaHora: "19:00", motivo: "Cancha ocupada",
     },
   });

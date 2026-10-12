@@ -9,18 +9,20 @@ const horarioSchema = z.object({
 });
 
 /**
- * El formulario manda un checkbox por día (dia_0 … dia_6) con su hora y duración (hora_N,
- * duracion_N); solo cuentan los días marcados. Si ya viene `horarios` como lista, se respeta.
+ * El formulario manda un renglón por horario (h_N_dia, h_N_hora, h_N_dur, con N cualquiera: los
+ * renglones se agregan y quitan en el navegador). Si ya viene `horarios` como lista, se respeta.
  */
 export function horariosDeFormulario(input: unknown): unknown {
   if (!input || typeof input !== "object" || Array.isArray((input as { horarios?: unknown }).horarios)) return input;
   const form = input as Record<string, unknown>;
-  const horarios = [];
-  for (let d = 0; d <= 6; d++) {
-    if (form[`dia_${d}`] !== "on") continue;
-    const duracion = form[`duracion_${d}`];
-    horarios.push({ diaSemana: d, hora: form[`hora_${d}`], ...(duracion ? { duracionMin: duracion } : {}) });
-  }
+  const indices = Object.keys(form)
+    .map((k) => /^h_(\d+)_dia$/.exec(k)?.[1])
+    .filter((n): n is string => n !== undefined && form[`h_${n}_dia`] != null && form[`h_${n}_dia`] !== "")
+    .sort((a, b) => Number(a) - Number(b));
+  const horarios = indices.map((n) => {
+    const duracion = form[`h_${n}_dur`];
+    return { diaSemana: form[`h_${n}_dia`], hora: form[`h_${n}_hora`], ...(duracion ? { duracionMin: duracion } : {}) };
+  });
   return { ...form, horarios };
 }
 
@@ -34,10 +36,10 @@ export const actividadSchema = z.preprocess(
       arancel: entero(0, 10_000_000).default(0),
       fechaInicio: dia,
       fechaFin: z.union([z.literal(""), z.null(), dia]).optional().transform((v) => v || null),
-      horarios: z.array(horarioSchema).min(1, "Elegí al menos un día").max(7),
+      horarios: z.array(horarioSchema).min(1, "Agregá al menos un horario").max(28),
     })
-    .refine((a) => new Set(a.horarios.map((h) => h.diaSemana)).size === a.horarios.length, {
-      message: "Un solo horario por día",
+    .refine((a) => new Set(a.horarios.map((h) => `${h.diaSemana}|${h.hora}`)).size === a.horarios.length, {
+      message: "Hay un horario repetido",
       path: ["horarios"],
     })
     .refine((a) => !a.fechaFin || a.fechaFin >= a.fechaInicio, {

@@ -2,9 +2,11 @@
 import { z } from "zod";
 import { casilla, dia, entero, hora, opcional, texto } from "@/lib/validation";
 
+/** Una clase es (actividad, fecha, hora): un día puede tener varias. */
 export const suspenderClaseSchema = z.object({
   actividadId: z.string().min(1),
   fecha: dia,
+  hora,
   motivo: texto(200),
 });
 

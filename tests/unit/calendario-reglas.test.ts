@@ -91,12 +91,20 @@ describe("clasesEnRango / horarioDe", () => {
     ]);
   });
 
-  it("horarioDe devuelve el horario del día o null si no hay clase o está fuera de vigencia", () => {
+  it("un mismo día puede tener varios horarios: devuelve una clase por cada uno, por hora", () => {
+    const lunesTarde = { diaSemana: 1, hora: "17:00", duracionMin: 60 };
+    const lunesManiana = { diaSemana: 1, hora: "09:00", duracionMin: 60 };
+    const clases = clasesEnRango(vigente([lunesTarde, lunesManiana]), dia(2026, 10, 12), dia(2026, 10, 12));
+    expect(clases.map((c) => c.horario.hora)).toEqual(["09:00", "17:00"]);
+  });
+
+  it("horarioDe devuelve el horario de esa fecha y hora, o null si no hay clase o está fuera de vigencia", () => {
     const act = vigente([miercoles, lunes], dia(2026, 10, 1), dia(2026, 10, 31));
-    expect(horarioDe(act, dia(2026, 10, 12))).toEqual(lunes);
-    expect(horarioDe(act, dia(2026, 10, 13))).toBeNull();
-    expect(horarioDe(act, dia(2026, 11, 2))).toBeNull();
-    expect(horarioDe(act, dia(2026, 9, 28))).toBeNull();
+    expect(horarioDe(act, dia(2026, 10, 12), "18:00")).toEqual(lunes);
+    expect(horarioDe(act, dia(2026, 10, 12), "19:00")).toBeNull();
+    expect(horarioDe(act, dia(2026, 10, 13), "18:00")).toBeNull();
+    expect(horarioDe(act, dia(2026, 11, 2), "18:00")).toBeNull();
+    expect(horarioDe(act, dia(2026, 9, 28), "18:00")).toBeNull();
   });
 });
 
@@ -119,7 +127,7 @@ describe("armarCalendario", () => {
   };
   const semana = { desde: dia(2026, 10, 12), hasta: dia(2026, 10, 18) };
   const reprogramada: ExcepcionCalendario = {
-    id: "e2", actividadId: "nat", fecha: dia(2026, 10, 14), tipo: "REPROGRAMADA",
+    id: "e2", actividadId: "nat", fecha: dia(2026, 10, 14), hora: "19:00", tipo: "REPROGRAMADA",
     nuevaFecha: dia(2026, 10, 16), nuevaHora: "20:00", motivo: "Pileta en mantenimiento",
   };
 
@@ -135,7 +143,7 @@ describe("armarCalendario", () => {
 
   it("marca la clase suspendida con su motivo", () => {
     const suspension: ExcepcionCalendario = {
-      id: "e1", actividadId: "nat", fecha: dia(2026, 10, 14), tipo: "SUSPENDIDA",
+      id: "e1", actividadId: "nat", fecha: dia(2026, 10, 14), hora: "19:00", tipo: "SUSPENDIDA",
       nuevaFecha: null, nuevaHora: null, motivo: "Feriado",
     };
     const [item] = armarCalendario({ actividades: [natacion], excepciones: [suspension], eventos: [], ...semana });
@@ -151,8 +159,20 @@ describe("armarCalendario", () => {
     });
     expect(items[1]).toMatchObject({
       estado: "REPROGRAMADA", fecha: dia(2026, 10, 16), hora: "20:00", horaFin: "21:00",
-      fechaOriginal: dia(2026, 10, 14), motivo: "Pileta en mantenimiento",
+      fechaOriginal: dia(2026, 10, 14), horaOriginal: "19:00", motivo: "Pileta en mantenimiento",
     });
+  });
+
+  it("con dos clases el mismo día, la excepción afecta solo a la de su hora", () => {
+    const doble: ActividadCalendario = {
+      ...natacion, horarios: [{ diaSemana: 3, hora: "09:00", duracionMin: 60 }, { diaSemana: 3, hora: "19:00", duracionMin: 60 }],
+    };
+    const suspension: ExcepcionCalendario = {
+      id: "e1", actividadId: "nat", fecha: dia(2026, 10, 14), hora: "19:00", tipo: "SUSPENDIDA",
+      nuevaFecha: null, nuevaHora: null, motivo: "Feriado",
+    };
+    const items = armarCalendario({ actividades: [doble], excepciones: [suspension], eventos: [], ...semana });
+    expect(items.map((i) => [i.hora, i.estado])).toEqual([["09:00", "NORMAL"], ["19:00", "SUSPENDIDA"]]);
   });
 
   it("si solo una de las dos fechas cae en el rango, muestra solo esa", () => {
@@ -321,6 +341,16 @@ describe("formatHorarios", () => {
         { diaSemana: 5, hora: "19:00", duracionMin: 60 },
       ]),
     ).toBe("Lun, Mié y Vie 19:00–20:00 · Dom 10:00–11:00");
+  });
+
+  it("muestra varios horarios del mismo día, ordenados por hora", () => {
+    expect(
+      formatHorarios([
+        { diaSemana: 3, hora: "17:00", duracionMin: 60 },
+        { diaSemana: 1, hora: "17:00", duracionMin: 60 },
+        { diaSemana: 1, hora: "09:00", duracionMin: 60 },
+      ]),
+    ).toBe("Lun 09:00–10:00 · Lun y Mié 17:00–18:00");
   });
 
   it("separa días con la misma hora pero distinta duración", () => {

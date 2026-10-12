@@ -29,10 +29,8 @@ export function rutaAgenda(slug: string, volver: string, seleccion?: Record<stri
   return `/c/${slug}/admin/agenda${s ? `?${s}` : ""}`;
 }
 
-/** Ruta de la Agenda del socio en la vista `volver` (saneada). */
-export function rutaAgendaSocio(slug: string, volver: string): string {
-  return `/c/${slug}/socio/agenda${queryVista(volver)}`;
-}
+/** Pestaña "Actividades y eventos" del socio (adonde vuelven sus acciones). */
+export const rutaActividadesSocio = (slug: string) => `/c/${slug}/socio/actividades`;
 
 const VALIDOS: Record<string, RegExp> = {
   vista: /^(semana|mes|lista)$/,
