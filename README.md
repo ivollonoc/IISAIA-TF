@@ -23,20 +23,24 @@ Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · NextAuth 
 ## Estructura
 
 ```
-prisma/            schema.prisma (modelo multi-tenant) y seed.ts (datos demo)
+prisma/            schema.prisma, migrations/ (historial versionado) y seed.ts (datos demo)
 src/
-  app/             páginas y rutas (App Router)
+  app/             páginas y rutas (App Router): composición, sin lógica de negocio
     admin/         panel del admin general
     c/[slug]/      espacio de cada club: /admin y /socio
     api/           API REST + endpoints de NextAuth
-  server/          lógica de negocio (cada función recibe clubId)
-  lib/             auth, sesión, permisos, validación, helpers
-  components/      UI reutilizable
-tests/             tests unitarios (Vitest)
-docs/              propuesta y presentación
+  modules/         un módulo por dominio: clubs, cuotas, socios, actividades
+    <modulo>/      service.ts (lógica; recibe clubId) · schema.ts (Zod) · actions.ts (Server Actions) · components/
+  lib/             transversal: auth, sesión, permisos, helpers de validación y de actions, errores
+  components/      UI base reutilizable
+tests/
+  unit/            funciones puras, sin base
+  integration/     servicios contra Postgres real (gestion_socios_test)
+  helpers/         reset de base, factories y guard de base _test
+docs/              propuesta, presentación, specs y planes (docs/superpowers)
 ```
 
-**Multi-tenant:** cada tabla de negocio tiene `clubId`; los servicios en `src/server` siempre filtran por él y los guards (`requireClub`, `apiClub`) verifican que el usuario pertenezca al club de la URL.
+**Multi-tenant:** cada tabla de negocio tiene `clubId`; los servicios de `src/modules/*/service.ts` siempre filtran por él y los guards (`requireClub`, `apiClub`) verifican que el usuario pertenezca al club de la URL.
 
 ## Cómo correrlo
 
