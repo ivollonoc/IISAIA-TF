@@ -1,10 +1,11 @@
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { actividadesParaSocio } from "@/modules/actividades/service";
-import { estaAlDia, periodoActual } from "@/lib/periodo";
-import { DIAS, formatFecha, formatPesos } from "@/lib/format";
+import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
+import { DIAS, formatDia, formatPesos } from "@/lib/format";
 import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { cancelarAction, inscribirAction } from "@/modules/actividades/actions";
+import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 
 export default async function SocioHomePage({
   params,
@@ -15,12 +16,12 @@ export default async function SocioHomePage({
 }) {
   const { slug } = await params;
   const { club, user } = await requireClub(slug, "socio");
-  const [socio, actividades, msg] = await Promise.all([
+  const [socio, actividades, cuenta, msg] = await Promise.all([
     obtenerSocio(club.id, user.socioId!),
     actividadesParaSocio(club.id, user.socioId!),
+    cuentaSocio(club.id, user.socioId!),
     searchParams,
   ]);
-  const alDia = estaAlDia(socio.pagos.map((p) => p.periodo));
 
   return (
     <>
@@ -29,17 +30,20 @@ export default async function SocioHomePage({
       <Aviso {...msg} />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Mi cuota">
+        <Card title="Mi cuenta">
           <p className="mb-2">
-            <Badge ok={alDia}>{alDia ? "Al día" : "Pendiente"}</Badge>{" "}
-            <span className="text-sm text-slate-500">período {periodoActual()}</span>
+            <Badge ok={cuenta.alDia}>{cuenta.alDia ? "Al día" : "Con deuda vencida"}</Badge>
           </p>
-          <p className="text-sm text-slate-600">Cuota mensual: {formatPesos(socio.tipoSocio.cuotaMensual)}</p>
-          {!alDia && (
-            <p className="mt-3 text-sm text-slate-500">
-              El pago online llega en la próxima versión. Por ahora, abonás en secretaría o por transferencia.
-            </p>
+          <p className="text-sm text-slate-600">
+            Saldo pendiente: <strong>{formatPesos(cuenta.deuda)}</strong>
+          </p>
+          {cuenta.deudaVencida > 0 && (
+            <p className="text-sm text-red-700">Vencido: {formatPesos(cuenta.deudaVencida)}</p>
           )}
+          {cuenta.proximoVencimiento && (
+            <p className="text-sm text-slate-600">Próximo vencimiento: {formatDia(cuenta.proximoVencimiento)}</p>
+          )}
+          <p className="mt-2 text-sm text-slate-500">Cuota mensual: {formatPesos(socio.tipoSocio.cuotaMensual)}</p>
         </Card>
 
         <div className="lg:col-span-2">
@@ -77,17 +81,8 @@ export default async function SocioHomePage({
         </div>
 
         <div className="lg:col-span-3">
-          <Card title="Mis pagos">
-            <Tabla headers={["Período", "Monto", "Medio", "Fecha"]}>
-              {socio.pagos.map((p) => (
-                <tr key={p.id}>
-                  <td className="py-2 pr-4">{p.periodo}</td>
-                  <td className="py-2 pr-4">{formatPesos(p.monto)}</td>
-                  <td className="py-2 pr-4">{p.medio.toLowerCase()}</td>
-                  <td className="py-2 pr-4">{formatFecha(p.fecha)}</td>
-                </tr>
-              ))}
-            </Tabla>
+          <Card title="Cuenta corriente">
+            <MovimientosTabla movimientos={cuenta.movimientos} />
           </Card>
         </div>
       </div>

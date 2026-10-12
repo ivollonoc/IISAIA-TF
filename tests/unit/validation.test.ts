@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { actividadSchema } from "@/modules/actividades/schema";
 import { clubSchema } from "@/modules/clubs/schema";
-import { pagoSchema } from "@/modules/cuotas/schema";
 import { socioSchema } from "@/modules/socios/schema";
 
 describe("clubSchema", () => {
@@ -31,18 +30,6 @@ describe("socioSchema", () => {
 
   it("rechaza email mal formado", () => {
     expect(socioSchema.safeParse({ ...valido, email: "no-es-email" }).success).toBe(false);
-  });
-});
-
-describe("pagoSchema", () => {
-  it("convierte monto desde string (FormData)", () => {
-    const r = pagoSchema.parse({ socioId: "s1", periodo: "2026-09", monto: "15000", medio: "EFECTIVO" });
-    expect(r.monto).toBe(15000);
-  });
-
-  it("rechaza mes 13 y montos no positivos", () => {
-    expect(pagoSchema.safeParse({ socioId: "s1", periodo: "2026-13", monto: 1, medio: "OTRO" }).success).toBe(false);
-    expect(pagoSchema.safeParse({ socioId: "s1", periodo: "2026-09", monto: 0, medio: "OTRO" }).success).toBe(false);
   });
 });
 

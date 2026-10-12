@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Club, TipoSocio } from "@prisma/client";
 import { db } from "@/lib/db";
-import { periodoActual } from "@/lib/periodo";
 import { actualizarSocio, cambiarEstadoSocio, crearSocio, listarSocios, obtenerSocio } from "@/modules/socios/service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
@@ -117,17 +116,13 @@ describe("consultas", () => {
     await expect(obtenerSocio(club.id, s.id)).rejects.toThrow("Socio no encontrado");
   });
 
-  it("listarSocios devuelve solo los del club, por número, con el pago del período actual", async () => {
+  it("listarSocios devuelve solo los del club, ordenados por número", async () => {
     const otro = await f.crearClub();
     const s2 = await f.crearSocio(club.id, { tipoSocioId: tipo.id, nroSocio: 2 });
     const s1 = await f.crearSocio(club.id, { tipoSocioId: tipo.id, nroSocio: 1 });
     await f.crearSocio(otro.id);
-    await f.crearPagoDirecto(club.id, s2.id, { periodo: periodoActual() });
-    await f.crearPagoDirecto(club.id, s1.id, { periodo: "2020-01" });
 
     const lista = await listarSocios(club.id);
     expect(lista.map((s) => s.id)).toEqual([s1.id, s2.id]);
-    expect(lista[0].pagos).toHaveLength(0);
-    expect(lista[1].pagos).toHaveLength(1);
   });
 });

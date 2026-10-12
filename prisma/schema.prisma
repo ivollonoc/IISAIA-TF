@@ -1,5 +1,5 @@
 // Esquema multi-tenant: toda entidad de negocio lleva clubId y
-// todas las consultas de la app filtran por él (ver src/server/*).
+// todas las consultas de la app filtran por él (ver src/modules/*/service.ts).
 
 generator client {
   provider = "prisma-client-js"
@@ -21,20 +21,41 @@ enum Rol {
 enum MedioPago {
   EFECTIVO
   TRANSFERENCIA
+  ONLINE
   OTRO
 }
 
+enum ConceptoCargo {
+  CUOTA
+  ACTIVIDAD
+}
+
+enum EstadoCargo {
+  PENDIENTE
+  PAGADO
+  ANULADO
+}
+
+enum EstadoIntento {
+  APROBADO
+  RECHAZADO
+  PENDIENTE
+}
+
 model Club {
-  id            String        @id @default(cuid())
-  nombre        String
-  slug          String        @unique
-  createdAt     DateTime      @default(now())
-  usuarios      Usuario[]
-  tiposSocio    TipoSocio[]
-  socios        Socio[]
-  pagos         Pago[]
-  actividades   Actividad[]
-  inscripciones Inscripcion[]
+  id             String        @id @default(cuid())
+  nombre         String
+  slug           String        @unique
+  diaVencimiento Int           @default(10) // 1..28
+  createdAt      DateTime      @default(now())
+  usuarios       Usuario[]
+  tiposSocio     TipoSocio[]
+  socios         Socio[]
+  pagos          Pago[]
+  actividades    Actividad[]
+  inscripciones  Inscripcion[]
+  cargos         Cargo[]
+  intentosPago   IntentoPago[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
@@ -79,25 +100,29 @@ model Socio {
   createdAt     DateTime      @default(now())
   pagos         Pago[]
   inscripciones Inscripcion[]
+  cargos        Cargo[]
+  intentosPago  IntentoPago[]
 
   @@unique([clubId, nroSocio])
   @@unique([clubId, dni])
   @@index([clubId])
 }
 
+// Un pago cancela uno o más cargos completos; monto = suma de sus cargos.
 model Pago {
-  id      String    @id @default(cuid())
-  clubId  String
-  club    Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  socioId String
-  socio   Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
-  periodo String // "YYYY-MM"
-  monto   Int
-  medio   MedioPago
-  fecha   DateTime  @default(now())
+  id            String       @id @default(cuid())
+  clubId        String
+  club          Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socioId       String
+  socio         Socio        @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  monto         Int
+  medio         MedioPago
+  fecha         DateTime     @default(now())
+  registradoPor String? // usuarioId del admin; null si es ONLINE
+  cargos        Cargo[]
+  intento       IntentoPago?
 
-  @@unique([socioId, periodo])
-  @@index([clubId, periodo])
+  @@index([clubId, fecha])
 }
 
 model Actividad {
@@ -108,8 +133,10 @@ model Actividad {
   diaSemana     Int // 0 = domingo ... 6 = sábado
   hora          String // "HH:MM"
   cupo          Int
+  arancel       Int           @default(0) // pesos por mes; 0 = gratuita
   activa        Boolean       @default(true)
   inscripciones Inscripcion[]
+  cargos        Cargo[]
 
   @@index([clubId])
 }
@@ -126,4 +153,51 @@ model Inscripcion {
 
   @@unique([actividadId, socioId])
   @@index([clubId])
+}
+
+// Deuda del socio: cuota social del período o arancel de una actividad.
+model Cargo {
+  id              String        @id @default(cuid())
+  clubId          String
+  club            Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socioId         String
+  socio           Socio         @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  concepto        ConceptoCargo
+  actividadId     String?
+  actividad       Actividad?    @relation(fields: [actividadId], references: [id], onDelete: SetNull)
+  clave           String // "CUOTA" | "ACT:<actividadId>" (NULL en actividadId no sirve para UNIQUE)
+  descripcion     String // se conserva aunque se borre la actividad
+  periodo         String // "YYYY-MM"
+  monto           Int
+  vencimiento     DateTime // medianoche UTC del día de vencimiento
+  estado          EstadoCargo   @default(PENDIENTE)
+  pagoId          String?
+  pago            Pago?         @relation(fields: [pagoId], references: [id], onDelete: SetNull)
+  motivoAnulacion String?
+  createdAt       DateTime      @default(now())
+
+  @@unique([socioId, periodo, clave])
+  @@index([clubId, periodo])
+  @@index([clubId, estado, vencimiento])
+}
+
+// Cada intento de pago online, aprobado o no. Nunca guarda el número completo ni el CVV.
+model IntentoPago {
+  id                String        @id @default(cuid())
+  clubId            String
+  club              Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socioId           String
+  socio             Socio         @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  cargoIds          String[]
+  monto             Int
+  estado            EstadoIntento
+  pasarela          String // "simulada" | "mercadopago"
+  referenciaExterna String?
+  motivoRechazo     String?
+  ultimos4          String?
+  pagoId            String?       @unique
+  pago              Pago?         @relation(fields: [pagoId], references: [id], onDelete: SetNull)
+  createdAt         DateTime      @default(now())
+
+  @@index([clubId, estado])
 }

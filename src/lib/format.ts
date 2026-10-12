@@ -5,3 +5,6 @@ const pesos = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS
 export const formatPesos = (monto: number) => pesos.format(monto);
 
 export const formatFecha = (fecha: Date) => fecha.toLocaleDateString("es-AR");
+
+/** Día calendario de una fecha guardada como medianoche UTC (vencimientos): no se corre por zona horaria. */
+export const formatDia = (fecha: Date) => fecha.toLocaleDateString("es-AR", { timeZone: "UTC" });

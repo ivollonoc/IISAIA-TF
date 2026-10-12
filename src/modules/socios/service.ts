@@ -2,7 +2,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { periodoActual } from "@/lib/periodo";
 import { socioSchema, type SocioInput } from "./schema";
 
 export function listarSocios(clubId: string) {
@@ -11,7 +10,6 @@ export function listarSocios(clubId: string) {
     orderBy: { nroSocio: "asc" },
     include: {
       tipoSocio: true,
-      pagos: { where: { periodo: periodoActual() }, select: { id: true } },
     },
   });
 }
@@ -21,7 +19,6 @@ export async function obtenerSocio(clubId: string, socioId: string) {
     where: { id: socioId, clubId },
     include: {
       tipoSocio: true,
-      pagos: { orderBy: { periodo: "desc" } },
       inscripciones: { include: { actividad: true } },
     },
   });
@@ -71,7 +68,7 @@ export async function actualizarSocio(clubId: string, socioId: string, input: un
   });
 }
 
-/** Baja/alta lógica: el historial de pagos se conserva. */
+/** Baja/alta lógica: la cuenta corriente se conserva. */
 export async function cambiarEstadoSocio(clubId: string, socioId: string, activo: boolean) {
   const { count } = await db.socio.updateMany({ where: { id: socioId, clubId }, data: { activo } });
   if (count === 0) throw new DomainError("Socio no encontrado");

@@ -1,6 +1,9 @@
 // Datos de demo. Idempotente: borra todo y vuelve a crear.
-import { PrismaClient } from "@prisma/client";
+// Escenario: cargos del mes anterior y del actual; Martín y Valentina al día, Lucía y Sofía con
+// deuda por vencer, Juan moroso (no pagó el mes anterior). Pagos en efectivo, transferencia y online.
+import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { periodoActual } from "../src/lib/periodo";
+import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
 
 const prisma = new PrismaClient();
 
@@ -8,11 +11,18 @@ async function main() {
   await prisma.club.deleteMany();
   await prisma.usuario.deleteMany();
 
+  const hoy = new Date();
+  const actual = periodoActual(hoy);
+  const anterior = periodoActual(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 15));
+  // Vencimiento una semana adelante para que los cargos del mes estén "por vencer" en la demo
+  // (desde el día 22 queda en 28, el máximo permitido).
+  const diaVencimiento = Math.min(28, hoy.getDate() + 7);
+
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });
 
-  const club = await prisma.club.create({ data: { nombre: "Club Atlético Demo", slug: "demo" } });
-  await prisma.usuario.create({
+  const club = await prisma.club.create({ data: { nombre: "Club Atlético Demo", slug: "demo", diaVencimiento } });
+  const admin = await prisma.usuario.create({
     data: { email: "admin@demo.club", nombre: "Admin Demo", rol: "ADMIN_CLUB", clubId: club.id },
   });
 
@@ -31,7 +41,7 @@ async function main() {
     { nombre: "Valentina", apellido: "Ruiz", dni: "46777888", tipo: cadete },
   ];
 
-  const socios = [];
+  const socios: Socio[] = [];
   for (const [i, s] of base.entries()) {
     socios.push(
       await prisma.socio.create({
@@ -42,23 +52,69 @@ async function main() {
       }),
     );
   }
-
-  // 3 de 5 socios al día con el período actual
-  const periodo = periodoActual();
-  for (const s of socios.slice(0, 3)) {
-    const tipo = base.find((b) => b.dni === s.dni)!.tipo;
-    await prisma.pago.create({
-      data: { clubId: club.id, socioId: s.id, periodo, monto: tipo.cuotaMensual, medio: "TRANSFERENCIA" },
-    });
-  }
+  // Juan (socios[3]) no paga el mes anterior: queda moroso.
+  const [lucia, martin, sofia, , valentina] = socios;
+  const cuota = (s: Socio) => (s.tipoSocioId === activo.id ? activo.cuotaMensual : cadete.cuotaMensual);
 
   const futbol = await prisma.actividad.create({
-    data: { clubId: club.id, nombre: "Fútbol infantil", diaSemana: 1, hora: "18:00", cupo: 20 },
+    data: { clubId: club.id, nombre: "Fútbol infantil", diaSemana: 1, hora: "18:00", cupo: 20, arancel: 6000 },
   });
-  await prisma.actividad.create({ data: { clubId: club.id, nombre: "Natación", diaSemana: 3, hora: "19:00", cupo: 2 } });
+  const natacion = await prisma.actividad.create({
+    data: { clubId: club.id, nombre: "Natación", diaSemana: 3, hora: "19:00", cupo: 2, arancel: 5000 },
+  });
   await prisma.actividad.create({ data: { clubId: club.id, nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 15 } });
 
-  await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: socios[2].id } });
+  await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: sofia.id } });
+  await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: natacion.id, socioId: lucia.id } });
+
+  // Cargos de dos meses, como los generaría el botón "Generar cargos".
+  for (const periodo of [anterior, actual]) {
+    const vence = vencimiento(periodo, diaVencimiento);
+    for (const s of socios) {
+      await prisma.cargo.create({
+        data: {
+          clubId: club.id, socioId: s.id, concepto: "CUOTA", clave: "CUOTA",
+          descripcion: `Cuota social ${periodo}`, periodo, monto: cuota(s), vencimiento: vence,
+        },
+      });
+    }
+    for (const [s, a] of [[sofia, futbol], [lucia, natacion]] as const) {
+      await prisma.cargo.create({
+        data: {
+          clubId: club.id, socioId: s.id, concepto: "ACTIVIDAD", actividadId: a.id, clave: `ACT:${a.id}`,
+          descripcion: `${a.nombre} ${periodo}`, periodo, monto: a.arancel, vencimiento: vence,
+        },
+      });
+    }
+  }
+
+  async function pagar(socio: Socio, periodos: string[], medio: MedioPago) {
+    const cargos = await prisma.cargo.findMany({ where: { socioId: socio.id, periodo: { in: periodos } } });
+    const pago = await prisma.pago.create({
+      data: {
+        clubId: club.id, socioId: socio.id, medio,
+        monto: cargos.reduce((s, c) => s + c.monto, 0),
+        registradoPor: medio === "ONLINE" ? null : admin.id,
+      },
+    });
+    await prisma.cargo.updateMany({
+      where: { id: { in: cargos.map((c) => c.id) } },
+      data: { estado: "PAGADO", pagoId: pago.id },
+    });
+    return { pago, cargos };
+  }
+
+  await pagar(martin, [anterior], "EFECTIVO");
+  await pagar(martin, [actual], "TRANSFERENCIA");
+  await pagar(valentina, [anterior, actual], "TRANSFERENCIA");
+  await pagar(sofia, [anterior], "EFECTIVO");
+  const online = await pagar(lucia, [anterior], "ONLINE");
+  await prisma.intentoPago.create({
+    data: {
+      clubId: club.id, socioId: lucia.id, cargoIds: online.cargos.map((c) => c.id), monto: online.pago.monto,
+      estado: "APROBADO", pasarela: "simulada", referenciaExterna: "SIM-seed", ultimos4: "0001", pagoId: online.pago.id,
+    },
+  });
 
   console.log(`Seed OK. Logins demo: ${superEmail} | admin@demo.club | socio@demo.club`);
 }

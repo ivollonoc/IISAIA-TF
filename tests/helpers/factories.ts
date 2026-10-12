@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 let seq = 0;
 const siguiente = () => ++seq;
 
-export function crearClub(over: { nombre?: string; slug?: string } = {}) {
+export function crearClub(over: { nombre?: string; slug?: string; diaVencimiento?: number } = {}) {
   const n = siguiente();
   return db.club.create({ data: { nombre: `Club ${n}`, slug: `club-${n}`, ...over } });
 }
@@ -46,7 +46,7 @@ export async function crearSocio(
 
 export function crearActividad(
   clubId: string,
-  over: { nombre?: string; diaSemana?: number; hora?: string; cupo?: number; activa?: boolean } = {},
+  over: { nombre?: string; diaSemana?: number; hora?: string; cupo?: number; activa?: boolean; arancel?: number } = {},
 ) {
   const n = siguiente();
   return db.actividad.create({
@@ -58,8 +58,42 @@ export function inscribirDirecto(clubId: string, actividadId: string, socioId: s
   return db.inscripcion.create({ data: { clubId, actividadId, socioId } });
 }
 
-export function crearPagoDirecto(clubId: string, socioId: string, over: { periodo?: string; monto?: number } = {}) {
-  return db.pago.create({
-    data: { clubId, socioId, periodo: "2026-01", monto: 10000, medio: "EFECTIVO", ...over },
+export function crearPagoDirecto(
+  clubId: string,
+  socioId: string,
+  over: { monto?: number; medio?: "EFECTIVO" | "TRANSFERENCIA" | "ONLINE" | "OTRO"; fecha?: Date } = {},
+) {
+  return db.pago.create({ data: { clubId, socioId, monto: 10000, medio: "EFECTIVO", ...over } });
+}
+
+export function crearCargo(
+  clubId: string,
+  socioId: string,
+  over: {
+    concepto?: "CUOTA" | "ACTIVIDAD";
+    actividadId?: string | null;
+    clave?: string;
+    descripcion?: string;
+    periodo?: string;
+    monto?: number;
+    vencimiento?: Date;
+    estado?: "PENDIENTE" | "PAGADO" | "ANULADO";
+    pagoId?: string | null;
+    createdAt?: Date;
+  } = {},
+) {
+  const n = siguiente();
+  return db.cargo.create({
+    data: {
+      clubId,
+      socioId,
+      concepto: "CUOTA",
+      clave: `X:${n}`,
+      descripcion: `Cargo ${n}`,
+      periodo: "2026-10",
+      monto: 10000,
+      vencimiento: new Date(Date.UTC(2026, 9, 10)),
+      ...over,
+    },
   });
 }

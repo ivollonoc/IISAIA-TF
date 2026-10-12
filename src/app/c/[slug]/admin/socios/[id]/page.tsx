@@ -2,11 +2,12 @@ import { notFound } from "next/navigation";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
+import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
 import { DomainError } from "@/lib/errors";
-import { periodoActual } from "@/lib/periodo";
-import { formatFecha, formatPesos } from "@/lib/format";
-import { Aviso, Boton, Campo, Card, Selector, Tabla, Titulo, type SearchParams } from "@/components/ui";
-import { registrarPagoAction } from "@/modules/cuotas/actions";
+import { formatPesos } from "@/lib/format";
+import { Aviso, Badge, Boton, Card, Selector, Titulo, type SearchParams } from "@/components/ui";
+import { registrarPagoAction } from "@/modules/cuenta-corriente/actions";
+import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 import { actualizarSocioAction, cambiarEstadoSocioAction } from "@/modules/socios/actions";
 import { SocioForm } from "@/modules/socios/components/SocioForm";
 
@@ -23,7 +24,7 @@ export default async function SocioDetallePage({
     if (e instanceof DomainError) notFound();
     throw e;
   });
-  const [tipos, msg] = await Promise.all([listarTipos(club.id), searchParams]);
+  const [tipos, cuenta, msg] = await Promise.all([listarTipos(club.id), cuentaSocio(club.id, socio.id), searchParams]);
 
   return (
     <>
@@ -41,31 +42,27 @@ export default async function SocioDetallePage({
           </form>
         </Card>
 
-        <Card title="Registrar pago">
-          <form action={registrarPagoAction.bind(null, slug, socio.id)} className="flex flex-col gap-3">
-            <Campo label="Período (YYYY-MM)" name="periodo" defaultValue={periodoActual()} required />
-            <Campo label="Monto ($)" name="monto" type="number" defaultValue={socio.tipoSocio.cuotaMensual} required />
-            <Selector label="Medio" name="medio" defaultValue="EFECTIVO">
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-              <option value="OTRO">Otro</option>
-            </Selector>
-            <Boton type="submit">Registrar</Boton>
-          </form>
-        </Card>
-
-        <Card title="Historial de pagos">
-          <Tabla headers={["Período", "Monto", "Fecha"]}>
-            {socio.pagos.map((p) => (
-              <tr key={p.id}>
-                <td className="py-2 pr-4">{p.periodo}</td>
-                <td className="py-2 pr-4">{formatPesos(p.monto)}</td>
-                <td className="py-2 pr-4">{formatFecha(p.fecha)}</td>
-              </tr>
-            ))}
-          </Tabla>
-          {socio.pagos.length === 0 && <p className="mt-2 text-sm text-slate-500">Sin pagos registrados.</p>}
-        </Card>
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          <Card title="Cuenta corriente">
+            <p className="mb-4 text-sm text-slate-600">
+              <Badge ok={cuenta.alDia}>{cuenta.alDia ? "Al día" : "Con deuda vencida"}</Badge> Deuda:{" "}
+              <strong>{formatPesos(cuenta.deuda)}</strong> · Vencida: {formatPesos(cuenta.deudaVencida)}
+            </p>
+            <form action={registrarPagoAction.bind(null, slug, socio.id)} className="flex flex-col gap-4">
+              <MovimientosTabla movimientos={cuenta.movimientos} seleccion="cargoIds" />
+              {cuenta.pendientes.length > 0 && (
+                <div className="flex flex-wrap items-end gap-3">
+                  <Selector label="Medio" name="medio" defaultValue="EFECTIVO">
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="TRANSFERENCIA">Transferencia</option>
+                    <option value="OTRO">Otro</option>
+                  </Selector>
+                  <Boton type="submit">Registrar pago de los cargos tildados</Boton>
+                </div>
+              )}
+            </form>
+          </Card>
+        </div>
       </div>
     </>
   );

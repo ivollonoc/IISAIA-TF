@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireClub } from "@/lib/session";
 import { listarSocios } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
+import { estadoSocios } from "@/modules/cuenta-corriente/consultas.service";
+import { formatPesos } from "@/lib/format";
 import { Aviso, Badge, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearSocioAction } from "@/modules/socios/actions";
 import { SocioForm } from "@/modules/socios/components/SocioForm";
@@ -15,16 +17,21 @@ export default async function SociosPage({
 }) {
   const { slug } = await params;
   const { club } = await requireClub(slug, "admin");
-  const [socios, tipos, msg] = await Promise.all([listarSocios(club.id), listarTipos(club.id), searchParams]);
+  const [socios, tipos, estados, msg] = await Promise.all([
+    listarSocios(club.id),
+    listarTipos(club.id),
+    estadoSocios(club.id),
+    searchParams,
+  ]);
 
   return (
     <>
-      <Titulo sub="Altas, modificaciones y estado de cuota del mes">Socios</Titulo>
+      <Titulo sub="Altas, modificaciones y estado de cuenta">Socios</Titulo>
       <Aviso {...msg} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title={`Padrón (${socios.length})`}>
-            <Tabla headers={["N°", "Socio", "DNI", "Tipo", "Cuota del mes", "Estado"]}>
+            <Tabla headers={["N°", "Socio", "DNI", "Tipo", "Cuenta", "Deuda", "Estado"]}>
               {socios.map((s) => (
                 <tr key={s.id} className={s.activo ? "" : "opacity-50"}>
                   <td className="py-2 pr-4">{s.nroSocio}</td>
@@ -36,8 +43,9 @@ export default async function SociosPage({
                   <td className="py-2 pr-4">{s.dni}</td>
                   <td className="py-2 pr-4">{s.tipoSocio.nombre}</td>
                   <td className="py-2 pr-4">
-                    <Badge ok={s.pagos.length > 0}>{s.pagos.length > 0 ? "Al día" : "Pendiente"}</Badge>
+                    <Badge ok={!estados[s.id]?.moroso}>{estados[s.id]?.moroso ? "Moroso" : "Al día"}</Badge>
                   </td>
+                  <td className="py-2 pr-4">{formatPesos(estados[s.id]?.deuda ?? 0)}</td>
                   <td className="py-2 pr-4">{s.activo ? "Activo" : "Baja"}</td>
                 </tr>
               ))}
