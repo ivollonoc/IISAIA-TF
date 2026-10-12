@@ -37,6 +37,12 @@ enum EstadoCargo {
   ANULADO
 }
 
+enum CanalAviso {
+  IN_APP
+  EMAIL
+  SMS
+}
+
 enum EstadoIntento {
   APROBADO
   RECHAZADO
@@ -48,6 +54,7 @@ model Club {
   nombre              String
   slug                String              @unique
   diaVencimiento      Int                 @default(10) // 1..28
+  canales             CanalAviso[]        @default([IN_APP]) // vías de aviso a los socios (in-app siempre)
   createdAt           DateTime            @default(now())
   usuarios            Usuario[]
   tiposSocio          TipoSocio[]
@@ -61,20 +68,55 @@ model Club {
   eventos             Evento[]
   inscripcionesEvento InscripcionEvento[]
   listaEspera         ListaEspera[]
+  notificaciones      Notificacion[]
+  mensajesSalientes   MensajeSaliente[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
 model Usuario {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  nombre    String?
-  rol       Rol
-  clubId    String?
-  club      Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  socio     Socio?
-  createdAt DateTime @default(now())
+  id             String         @id @default(cuid())
+  email          String         @unique
+  nombre         String?
+  rol            Rol
+  clubId         String?
+  club           Club?          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socio          Socio?
+  createdAt      DateTime       @default(now())
+  notificaciones Notificacion[]
 
   @@index([clubId])
+}
+
+// Bandeja in-app de cada usuario.
+model Notificacion {
+  id        String    @id @default(cuid())
+  usuarioId String
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  clubId    String?
+  club      Club?     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  tipo      String // "PAGO_ACREDITADO", "CLASE_SUSPENDIDA", ...
+  titulo    String
+  cuerpo    String
+  link      String? // ruta interna ("/c/demo/socio")
+  leidaAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([usuarioId, leidaAt])
+}
+
+// Mails y SMS enviados (simulados o reales): el "buzón de salida" visible en la app.
+model MensajeSaliente {
+  id        String     @id @default(cuid())
+  clubId    String?
+  club      Club?      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  canal     CanalAviso // EMAIL | SMS
+  destino   String // email o teléfono
+  asunto    String?
+  cuerpo    String
+  proveedor String // "simulado" | "resend"
+  createdAt DateTime   @default(now())
+
+  @@index([clubId, createdAt])
 }
 
 model TipoSocio {
@@ -99,6 +141,7 @@ model Socio {
   apellido            String
   dni                 String
   email               String?
+  telefono            String? // para avisos por SMS
   tipoSocioId         String
   tipoSocio           TipoSocio           @relation(fields: [tipoSocioId], references: [id])
   activo              Boolean             @default(true)

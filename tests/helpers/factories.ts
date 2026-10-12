@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 let seq = 0;
 const siguiente = () => ++seq;
 
-export function crearClub(over: { nombre?: string; slug?: string; diaVencimiento?: number } = {}) {
+export function crearClub(
+  over: { nombre?: string; slug?: string; diaVencimiento?: number; canales?: ("IN_APP" | "EMAIL" | "SMS")[] } = {},
+) {
   const n = siguiente();
   return db.club.create({ data: { nombre: `Club ${n}`, slug: `club-${n}`, ...over } });
 }
@@ -22,6 +24,8 @@ export async function crearSocio(
     apellido?: string;
     dni?: string;
     email?: string | null;
+    telefono?: string | null;
+    usuarioId?: string | null;
     tipoSocioId?: string;
     activo?: boolean;
     nroSocio?: number;
@@ -159,4 +163,16 @@ export function crearEvento(
   return db.evento.create({
     data: { clubId, titulo: `Evento ${n}`, fecha: new Date(Date.UTC(2026, 9, 20)), hora: "20:00", ...over },
   });
+}
+
+export function crearUsuario(over: { email?: string; rol?: "SUPERADMIN" | "ADMIN_CLUB" | "SOCIO"; clubId?: string | null } = {}) {
+  const n = siguiente();
+  return db.usuario.create({ data: { email: `usuario${n}@test.com`, rol: "SOCIO", ...over } });
+}
+
+/** Socio con usuario de login (y su mismo email). */
+export async function crearSocioConUsuario(clubId: string, over: { activo?: boolean; telefono?: string | null; tipoSocioId?: string } = {}) {
+  const usuario = await crearUsuario({ rol: "SOCIO", clubId });
+  const socio = await crearSocio(clubId, { email: usuario.email, usuarioId: usuario.id, ...over });
+  return { socio, usuario };
 }
