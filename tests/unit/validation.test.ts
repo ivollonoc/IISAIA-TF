@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { actividadSchema } from "@/modules/actividades/schema";
-import { clubSchema } from "@/modules/clubs/schema";
+import { clubSchema, configClubSchema } from "@/modules/clubs/schema";
 import { socioSchema } from "@/modules/socios/schema";
 
 describe("clubSchema", () => {
@@ -41,5 +41,17 @@ describe("actividadSchema", () => {
   it("rechaza hora inválida y cupo 0", () => {
     expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "25:00", cupo: 15 }).success).toBe(false);
     expect(actividadSchema.safeParse({ nombre: "Yoga", diaSemana: 6, hora: "10:00", cupo: 0 }).success).toBe(false);
+  });
+});
+
+describe("configClubSchema", () => {
+  it("acepta días de vencimiento de 1 a 28 (desde FormData)", () => {
+    expect(configClubSchema.parse({ diaVencimiento: "1" }).diaVencimiento).toBe(1);
+    expect(configClubSchema.parse({ diaVencimiento: "28" }).diaVencimiento).toBe(28);
+  });
+
+  it("rechaza 0 y 29", () => {
+    expect(configClubSchema.safeParse({ diaVencimiento: 0 }).success).toBe(false);
+    expect(configClubSchema.safeParse({ diaVencimiento: 29 }).success).toBe(false);
   });
 });

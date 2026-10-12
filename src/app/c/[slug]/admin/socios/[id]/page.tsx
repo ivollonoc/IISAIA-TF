@@ -4,9 +4,9 @@ import { obtenerSocio } from "@/modules/socios/service";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
 import { DomainError } from "@/lib/errors";
-import { formatPesos } from "@/lib/format";
-import { Aviso, Badge, Boton, Card, Selector, Titulo, type SearchParams } from "@/components/ui";
-import { registrarPagoAction } from "@/modules/cuenta-corriente/actions";
+import { formatDia, formatPesos } from "@/lib/format";
+import { Aviso, Badge, Boton, Campo, Card, Selector, Titulo, type SearchParams } from "@/components/ui";
+import { anularCargoAction, registrarPagoAction } from "@/modules/cuenta-corriente/actions";
 import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 import { actualizarSocioAction, cambiarEstadoSocioAction } from "@/modules/socios/actions";
 import { SocioForm } from "@/modules/socios/components/SocioForm";
@@ -62,6 +62,26 @@ export default async function SocioDetallePage({
               )}
             </form>
           </Card>
+          {cuenta.pendientes.length > 0 && (
+            <Card title="Anular cargos pendientes">
+              <ul className="flex flex-col gap-3">
+                {cuenta.pendientes.map((c) => (
+                  <li key={c.id}>
+                    <form
+                      action={anularCargoAction.bind(null, slug, socio.id, c.id)}
+                      className="flex flex-wrap items-end gap-3"
+                    >
+                      <span className="min-w-48 text-sm">
+                        {c.descripcion} · {formatPesos(c.monto)} · vence {formatDia(c.vencimiento)}
+                      </span>
+                      <Campo label="Motivo" name="motivo" required />
+                      <Boton variante="peligro">Anular</Boton>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
       </div>
     </>

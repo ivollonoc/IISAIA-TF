@@ -1,5 +1,7 @@
 // Validación de entrada del módulo cuenta corriente.
 import { z } from "zod";
+import { PERIODO_REGEX } from "@/lib/periodo";
+import { texto } from "@/lib/validation";
 
 export const registrarPagoSchema = z.object({
   socioId: z.string().min(1),
@@ -9,4 +11,12 @@ export const registrarPagoSchema = z.object({
     .transform((ids) => [...new Set(ids)]),
   medio: z.enum(["EFECTIVO", "TRANSFERENCIA", "ONLINE", "OTRO"]),
   registradoPor: z.string().min(1).nullish(),
+});
+
+export const generarCargosSchema = z.object({
+  periodo: z.string().regex(PERIODO_REGEX, "Período con formato YYYY-MM"),
+});
+
+export const anularCargoSchema = z.object({
+  motivo: texto(200),
 });

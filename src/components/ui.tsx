@@ -70,7 +70,7 @@ export function Badge({ ok, children }: { ok: boolean; children: ReactNode }) {
 /** Muestra el resultado del último Server Action (?ok / ?error). */
 export function Aviso({ error, ok }: { error?: string; ok?: string }) {
   if (error) return <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>;
-  if (ok) return <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">Cambios guardados</p>;
+  if (ok) return <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{ok === "1" ? "Cambios guardados" : ok}</p>;
   return null;
 }
 

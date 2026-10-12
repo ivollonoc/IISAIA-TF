@@ -94,3 +94,35 @@ export async function resumenClub(clubId: string, hoy: Date = new Date()) {
     actividades,
   };
 }
+
+/** Cuenta del club: lo cobrado en el mes (acreditaciones) y la deuda de los socios. */
+export async function cuentaClub(clubId: string, hoy: Date = new Date()) {
+  const periodo = periodoActual(hoy);
+  const { desde, hasta } = rangoDelMes(periodo);
+  const [acreditaciones, pendiente, vencida, intentosSinPago] = await Promise.all([
+    db.pago.findMany({
+      where: { clubId, fecha: { gte: desde, lt: hasta } },
+      orderBy: { fecha: "desc" },
+      include: { socio: { select: { nombre: true, apellido: true, nroSocio: true } } },
+    }),
+    db.cargo.aggregate({ where: { clubId, estado: "PENDIENTE" }, _sum: { monto: true } }),
+    db.cargo.aggregate({
+      where: { clubId, estado: "PENDIENTE", vencimiento: { lt: inicioDelDia(hoy) } },
+      _sum: { monto: true },
+    }),
+    db.intentoPago.count({ where: { clubId, estado: "APROBADO", pagoId: null } }),
+  ]);
+  const suma = (ps: { monto: number }[]) => ps.reduce((s, p) => s + p.monto, 0);
+  return {
+    periodo,
+    cobrado: suma(acreditaciones),
+    cobradoOnline: suma(acreditaciones.filter((p) => p.medio === "ONLINE")),
+    cobradoVentanilla: suma(acreditaciones.filter((p) => p.medio !== "ONLINE")),
+    deudaPendiente: pendiente._sum.monto ?? 0,
+    deudaVencida: vencida._sum.monto ?? 0,
+    acreditaciones,
+    intentosSinPago,
+  };
+}
+
+export type CuentaClubData = Awaited<ReturnType<typeof cuentaClub>>;

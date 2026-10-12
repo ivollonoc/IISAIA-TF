@@ -1,7 +1,7 @@
 // Gestión de clubes (solo SUPERADMIN).
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { clubSchema } from "./schema";
+import { clubSchema, configClubSchema } from "./schema";
 
 export function listarClubs() {
   return db.club.findMany({
@@ -32,4 +32,10 @@ export async function crearClub(input: unknown) {
     });
     return club;
   });
+}
+
+/** Día de vencimiento de las cuotas del club (1..28). Aplica a los cargos que se generen desde ahora. */
+export function actualizarConfigClub(clubId: string, input: unknown) {
+  const data = configClubSchema.parse(input);
+  return db.club.update({ where: { id: clubId }, data });
 }

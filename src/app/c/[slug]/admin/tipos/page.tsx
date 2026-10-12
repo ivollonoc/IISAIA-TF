@@ -3,6 +3,7 @@ import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { formatPesos } from "@/lib/format";
 import { Aviso, Boton, Campo, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearTipoAction } from "@/modules/cuotas/actions";
+import { actualizarConfigClubAction } from "@/modules/clubs/actions";
 
 export default async function TiposPage({
   params,
@@ -17,7 +18,7 @@ export default async function TiposPage({
 
   return (
     <>
-      <Titulo sub="Categorías de socio y su cuota mensual">Tipos de socio</Titulo>
+      <Titulo sub="Categorías de socio, su cuota mensual y el vencimiento">Tipos de socio</Titulo>
       <Aviso {...msg} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -33,13 +34,29 @@ export default async function TiposPage({
             </Tabla>
           </Card>
         </div>
-        <Card title="Nuevo tipo">
-          <form action={crearTipoAction.bind(null, slug)} className="flex flex-col gap-3">
-            <Campo label="Nombre" name="nombre" placeholder="Activo, Cadete, Vitalicio…" required />
-            <Campo label="Cuota mensual ($)" name="cuotaMensual" type="number" min={0} required />
-            <Boton type="submit">Agregar</Boton>
-          </form>
-        </Card>
+        <div className="flex flex-col gap-6">
+          <Card title="Nuevo tipo">
+            <form action={crearTipoAction.bind(null, slug)} className="flex flex-col gap-3">
+              <Campo label="Nombre" name="nombre" placeholder="Activo, Cadete, Vitalicio…" required />
+              <Campo label="Cuota mensual ($)" name="cuotaMensual" type="number" min={0} required />
+              <Boton type="submit">Agregar</Boton>
+            </form>
+          </Card>
+          <Card title="Vencimiento de cuotas">
+            <form action={actualizarConfigClubAction.bind(null, slug)} className="flex flex-col gap-3">
+              <Campo
+                label="Día del mes (1 a 28)"
+                name="diaVencimiento"
+                type="number"
+                min={1}
+                max={28}
+                defaultValue={club.diaVencimiento}
+                required
+              />
+              <Boton type="submit">Guardar</Boton>
+            </form>
+          </Card>
+        </div>
       </div>
     </>
   );
