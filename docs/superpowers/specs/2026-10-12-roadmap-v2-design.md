@@ -26,7 +26,7 @@ Cada etapa tiene su propio ciclo **spec → plan → implementación** y se cier
 |---|---|---|---|
 | 0 | Base: migraciones, tests de servicios, modularización | — | [etapa-0](2026-10-12-etapa-0-base-design.md) |
 | 1 | Cuenta corriente + pago simulado | 0 | [etapa-1](2026-10-12-etapa-1-cuenta-corriente-design.md) |
-| 2 | Calendario de actividades | 0 | pendiente |
+| 2 | Calendario de actividades | 0 | [etapa-2](2026-10-12-etapa-2-calendario-design.md) |
 | 3 | Notificaciones (admin general, club, socios) | 1, 2 | pendiente |
 | 4 | Reportes con Tremor (por club y global) | 1, 2 | pendiente |
 | 5 | Subdominio por club (detrás de flag) | 0 | pendiente |
@@ -47,11 +47,12 @@ Diseño cerrado (ver spec). Resumen:
 
 ### 2 — Calendario de actividades
 
-- Ocurrencias con fecha generadas a partir de la regla recurrente, más eventos puntuales.
-- Cancelación/reprogramación de una ocurrencia.
-- Vista de calendario (semana/mes) para admin y socio.
+Diseño cerrado (ver spec). Resumen:
 
-Preguntas abiertas: ocurrencias materializadas en tabla vs. calculadas; si la inscripción sigue siendo a la actividad o pasa a ser por ocurrencia; asistencia.
+- Agenda con excepciones: las clases se calculan desde la regla semanal; se guardan solo las suspensiones/reprogramaciones (`ExcepcionClase`) y los eventos puntuales (`Evento`).
+- La inscripción sigue siendo mensual a la actividad; sin reservas por clase ni asistencia. Las suspensiones no afectan el cobro.
+- Eventos solo informativos, para todo el club o para los inscriptos de una actividad.
+- Vista mensual y agenda (admin con gestión de excepciones y eventos; socio en lectura + "Próximos 7 días"), sin librería de calendario.
 
 ### 3 — Notificaciones
 
