@@ -152,9 +152,20 @@ Opcional: crear antes un branch en Neon como respaldo.
 
 ### Subdominio por club (opcional)
 
-Con `TENANT_MODE=subdomain` y `ROOT_DOMAIN=<dominio>` cada club tiene su dirección: `atlas.<dominio>` muestra la página del club y sus secciones quedan en `atlas.<dominio>/c/atlas/…`; `<dominio>/c/atlas` redirige al subdominio. La sesión vale para el dominio y todos sus subdominios. Sin estas variables (o en los previews de Vercel) todo sigue funcionando por `/c/<slug>`.
+Con `TENANT_MODE=subdomain` y `ROOT_DOMAIN=<dominio>` cada club tiene su dirección: `demo.<dominio>` es la página pública del club y sus áreas quedan en `demo.<dominio>/admin` y `demo.<dominio>/socio`. El middleware las reescribe a las rutas internas `/c/demo/…`, y `<dominio>/c/demo/…` redirige al subdominio. El dominio raíz sirve la landing y el panel del admin general. La sesión vale para el dominio y todos sus subdominios, y los links de ingreso por mail de un usuario de club abren en su subdominio. Sin estas variables (o en los previews de Vercel) todo sigue funcionando por `/c/<slug>`.
 
-1. En Vercel → Settings → Domains, agregar `<dominio>` y el comodín `*.<dominio>`. El comodín exige que el dominio use los nameservers de Vercel (en NIC.ar: delegar el dominio a `ns1.vercel-dns.com` y `ns2.vercel-dns.com`).
-2. Cargar `TENANT_MODE=subdomain`, `ROOT_DOMAIN=<dominio>` y `APP_URL=https://<dominio>`, y volver a desplegar.
+**En local:**
 
-Para probarlo en local: `TENANT_MODE=subdomain ROOT_DOMAIN=localhost:3000 npm run dev` y abrir `http://demo.localhost:3000` (Chrome y Edge resuelven `*.localhost` solos; en localhost cada subdominio tiene su propia sesión).
+```bash
+TENANT_MODE=subdomain ROOT_DOMAIN=localhost:3000 npm run dev
+```
+
+Abrir `http://demo.localhost:3000` (Chrome, Edge y Firefox resuelven `*.localhost` sin tocar DNS ni `/etc/hosts`). Los navegadores no comparten cookies entre subdominios de `localhost`: se entra desde el subdominio del club (admin y socio del club) y desde `http://localhost:3000` solo el admin general.
+
+**Publicado (Vercel + NIC.ar), con `clubdesocios.com.ar`:**
+
+1. **NIC.ar** → Mis dominios → `clubdesocios.com.ar` → Delegaciones: reemplazar los servidores DNS por `ns1.vercel-dns.com` y `ns2.vercel-dns.com`. NIC.ar no aloja registros: el DNS pasa a administrarse en Vercel. El comodín `*.` necesita los nameservers de Vercel para emitir su certificado. La delegación puede tardar unas horas.
+2. **Vercel** → proyecto → Settings → Domains: agregar `clubdesocios.com.ar` (producción), `www.clubdesocios.com.ar` (redirige al anterior) y `*.clubdesocios.com.ar`. Con los nameservers de Vercel los registros (apex, `www` y comodín) se crean solos.
+3. **Vercel** → Settings → Environment Variables, solo en **Production**: `TENANT_MODE=subdomain`, `ROOT_DOMAIN=clubdesocios.com.ar` y `APP_URL=https://clubdesocios.com.ar`. Sin `NEXTAUTH_URL`: NextAuth toma el host de cada pedido. En Preview no se cargan, así que los previews siguen por `/c/<slug>`.
+4. Volver a desplegar: `TENANT_MODE` y `ROOT_DOMAIN` se leen al compilar.
+5. Opcional, para mails reales con Resend: verificar el dominio en Resend y cargar sus registros (SPF, DKIM) en Vercel → Domains → `clubdesocios.com.ar` → DNS Records.
