@@ -331,18 +331,26 @@ Integración de cada agregado con datos armados (incluye aislamiento por club y 
 
 ## Etapa 8 — Subdominios
 
-- Variables: `TENANT_MODE=path|subdomain` (default `path`), `ROOT_DOMAIN` (`clubdesocios.com.ar`; en local `localhost:3000`).
-- **Middleware** (solo con `subdomain`): `<slug>.<ROOT_DOMAIN>/<ruta>` → reescritura interna a `/c/<slug>/<ruta>`; el dominio raíz sirve la landing y `/admin`. Un subdominio desconocido → 404.
-- **Helper `urlClub(slug, ruta)`** para todos los links y redirecciones (en `path` devuelve `/c/<slug>/<ruta>`; en `subdomain` la URL del subdominio).
-- **Página pública del club** (`/c/[slug]`, en ambos modos): nombre, actividades con horarios, próximos eventos y botón Ingresar.
-- **Login:** en un subdominio solo entran usuarios de ese club ("Ese email no pertenece a <club>"). En el dominio raíz entra cualquiera y se lo redirige a su club.
-- **Sesión:** cookie de NextAuth con `domain=.<ROOT_DOMAIN>` en modo `subdomain`; `serverActions.allowedOrigins` con `*.<ROOT_DOMAIN>`.
-- **Local:** `demo.localhost:3000` y `atlas.localhost:3000` (sin DNS).
-- **Infraestructura (fuera del código, documentada en el README):** en Vercel agregar `clubdesocios.com.ar` y `*.clubdesocios.com.ar` al proyecto (Hobby lo permite, hasta 50 dominios); en NIC.ar delegar el dominio a `ns1.vercel-dns.com` / `ns2.vercel-dns.com`; setear `TENANT_MODE=subdomain` y `ROOT_DOMAIN` en Vercel.
+Actualizada el 2026-10-13 (rama `mvp4`): la primera versión dejaba las secciones del club en `<slug>.<ROOT_DOMAIN>/c/<slug>/…`; ahora las URLs visibles son limpias.
+
+- **Variables:** `TENANT_MODE=path|subdomain` (default `path`) y `ROOT_DOMAIN` (`clubdesocios.com.ar`; en local `localhost:3000`). Se exponen también al cliente (`env` de `next.config.ts`) porque hay componentes cliente que arman links.
+- **URLs visibles en modo `subdomain`:** `<slug>.<ROOT_DOMAIN>/` es la página pública del club; `<slug>.<ROOT_DOMAIN>/admin/…` y `<slug>.<ROOT_DOMAIN>/socio/…` son sus áreas. El dominio raíz sirve la landing y el panel del admin general (`/admin`).
+- **Rutas internas:** las páginas siguen en `src/app/c/[slug]/…` y `revalidatePath` usa `/c/<slug>/…`. Las notificaciones guardan links internos (`/c/<slug>/…`) y se traducen al mostrarlas.
+- **Middleware** (solo con `subdomain`; el host sale de `x-forwarded-host` o, si no hay, de `host`):
+  - Subdominio de un club: las rutas compartidas (`/api`, `/_next`, `/avisos`, `/ingresar`, `/sin-acceso`, `/login`) pasan; `/c/<slug>/<ruta>` en una navegación se redirige a la URL limpia (del mismo club o del subdominio del otro); fuera de una navegación pasa (fetch interno del redirect de un Server Action, prefetch); el resto se reescribe a `/c/<slug><ruta>`.
+  - Dominio raíz: `/c/<slug>/<ruta>` en una navegación redirige a `<slug>.<ROOT_DOMAIN>/<ruta>`; el resto pasa.
+  - Otros hosts (previews de Vercel, IP): pasan sin cambios y funcionan por `/c/<slug>`.
+  - Subdominio de un club inexistente → 404 (lo da la página del club).
+- **Helpers** (`src/lib/tenant.ts`): `urlClub(slug, ruta)` (en `path` → `/c/<slug><ruta>`; en `subdomain` → `https://<slug>.<ROOT_DOMAIN><ruta>`, `http` en localhost) y `urlVisible(ruta)` (traduce una ruta interna `/c/<slug>/…`; deja igual las demás). Todos los links, formularios y redirecciones del club usan `urlClub`; `ejecutar` redirige a `urlVisible(ruta)` y revalida la ruta interna.
+- **Página pública del club** (`/c/[slug]`, en ambos modos): nombre, actividades con horarios, próximos eventos e ingreso.
+- **Login:** en la página de un club solo entran usuarios de ese club; la respuesta es la misma que para un email no registrado ("Si el email está registrado, te mandamos un link"), para no revelar qué emails pertenecen al club. En el dominio raíz entra cualquiera y se lo redirige a su club. Los links por mail (link mágico e invitación) de un usuario de club apuntan a su subdominio; los del admin general, al dominio raíz (`APP_URL`).
+- **Sesión:** cookie de NextAuth con `domain=.<ROOT_DOMAIN>` en modo `subdomain` (fuera de localhost); `serverActions.allowedOrigins` con `<ROOT_DOMAIN>` y `*.<ROOT_DOMAIN>`. `NEXTAUTH_URL` no se define: NextAuth toma el host del pedido (Vercel o `AUTH_TRUST_HOST`).
+- **Local:** `TENANT_MODE=subdomain ROOT_DOMAIN=localhost:3000` y `http://demo.localhost:3000` (sin DNS; Chrome, Edge y Firefox resuelven `*.localhost`). Los navegadores no comparten cookies entre subdominios de `localhost`, así que en local se entra desde el subdominio del club; desde el dominio raíz solo el admin general.
+- **Infraestructura** (fuera del código, en el README): en Vercel, `clubdesocios.com.ar`, `www.clubdesocios.com.ar` y `*.clubdesocios.com.ar` en el proyecto, y `TENANT_MODE` y `ROOT_DOMAIN` solo en el entorno Production (los previews siguen por ruta). En NIC.ar, delegar el dominio a `ns1.vercel-dns.com` y `ns2.vercel-dns.com` (el comodín necesita los nameservers de Vercel para su certificado).
 
 ### Tests
 
-Unitarios de resolución de tenant por host (raíz, subdominio, `www`, localhost, preview de Vercel) y de `urlClub` en ambos modos.
+Unitarios de resolución de tenant por host (raíz, subdominio, `www`, localhost, preview de Vercel, `x-forwarded-host`), de las decisiones del middleware (URL limpia, `/c/<slug>` heredado, rutas compartidas, otro club, dominio raíz, fetch interno) y de `urlClub` y `urlVisible` en ambos modos. Integración del link mágico con la URL del subdominio del club.
 
 ---
 
