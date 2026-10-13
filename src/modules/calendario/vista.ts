@@ -32,6 +32,11 @@ export function rutaAgenda(slug: string, volver: string, seleccion?: Record<stri
 /** Pestaña "Actividades y eventos" del socio (adonde vuelven sus acciones). */
 export const rutaActividadesSocio = (slug: string) => `/c/${slug}/socio/actividades`;
 
+/** Orden de "Actividades y eventos" del socio (por tipo o por fecha), recordado en una cookie. */
+export const COOKIE_ORDEN_ACTIVIDADES = "orden-actividades";
+export type OrdenActividades = "tipo" | "fecha";
+export const ordenActividades = (valor: string | undefined): OrdenActividades => (valor === "fecha" ? "fecha" : "tipo");
+
 const VALIDOS: Record<string, RegExp> = {
   vista: /^(semana|mes|lista)$/,
   semana: /^\d{4}-\d{2}-\d{2}$/,

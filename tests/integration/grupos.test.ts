@@ -52,6 +52,20 @@ describe("pendientesDelGrupo", () => {
     expect(r.total).toBe(23000);
     expect(r.integrantes.map((s) => s.nombre)).toEqual(["Ana", "Beto"]);
   });
+
+  it("presenta a los integrantes con su tipo de socio y lo que adeuda cada uno", async () => {
+    const [ana, beto] = [await socio("Ana"), await socio("Beto")];
+    await agregarAlGrupo(club.id, { titularId: ana.id, socioId: beto.id });
+    await f.crearCargo(club.id, beto.id, { monto: 8000 });
+    await f.crearCargo(club.id, beto.id, { monto: 2000 });
+    const tipo = async (id: string) => (await db.tipoSocio.findUniqueOrThrow({ where: { id } })).nombre;
+
+    const r = await pendientesDelGrupo(club.id, ana.id);
+    expect(r.integrantes.map((s) => [s.nombre, s.tipoSocio.nombre, s.pendiente])).toEqual([
+      ["Ana", await tipo(ana.tipoSocioId), 0],
+      ["Beto", await tipo(beto.tipoSocioId), 10000],
+    ]);
+  });
 });
 
 describe("quitarDelGrupo / integrantesDelGrupo / resumenGrupos", () => {

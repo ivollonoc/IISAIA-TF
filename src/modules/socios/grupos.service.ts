@@ -30,7 +30,7 @@ export async function quitarDelGrupo(clubId: string, socioId: string) {
 export async function integrantesDelGrupo(clubId: string, socioId: string) {
   const socio = await db.socio.findFirst({
     where: { id: socioId, clubId },
-    include: { familiares: { orderBy: { nroSocio: "asc" } } },
+    include: { tipoSocio: true, familiares: { orderBy: { nroSocio: "asc" }, include: { tipoSocio: true } } },
   });
   if (!socio) throw new DomainError("Socio no encontrado");
   const { familiares, ...titular } = socio;
@@ -46,7 +46,12 @@ export async function pendientesDelGrupo(clubId: string, socioId: string, hoy: D
     include: { socio: { select: { nombre: true, apellido: true } } },
   });
   const pendientes = cargos.map((c) => ({ ...c, vencido: estaVencido(c, hoy) }));
-  return { integrantes, pendientes, total: pendientes.reduce((s, c) => s + c.monto, 0) };
+  const deuda = (socioId: string) => pendientes.filter((c) => c.socioId === socioId).reduce((s, c) => s + c.monto, 0);
+  return {
+    integrantes: integrantes.map((s) => ({ ...s, pendiente: deuda(s.id) })),
+    pendientes,
+    total: pendientes.reduce((s, c) => s + c.monto, 0),
+  };
 }
 
 /** Indicadores y lista de grupos del club (titulares con al menos un familiar). */

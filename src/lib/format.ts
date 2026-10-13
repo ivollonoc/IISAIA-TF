@@ -21,6 +21,9 @@ export const formatFechaHora = (instante: Date) => {
 export const formatDiaCorto = (fecha: Date) =>
   `${DIAS_CORTOS[fecha.getUTCDay()]} ${dos(fecha.getUTCDate())}/${dos(fecha.getUTCMonth() + 1)}`;
 
+/** "Miércoles 14 de octubre" para un día guardado a medianoche UTC. */
+export const formatDiaLargo = (fecha: Date) => `${DIAS[fecha.getUTCDay()]} ${fecha.getUTCDate()} de ${MESES[fecha.getUTCMonth()]}`;
+
 /** "octubre 2026" para un período "YYYY-MM". */
 export const nombreMes = (periodo: string) => {
   const [anio, mes] = periodo.split("-").map(Number);

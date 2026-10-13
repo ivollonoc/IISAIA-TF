@@ -1,23 +1,31 @@
+import { cookies } from "next/headers";
 import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
-import { formatDiaCorto, formatPesos } from "@/lib/format";
+import { formatDiaCorto, formatDiaLargo, formatPesos } from "@/lib/format";
 import { inicioDelDia } from "@/lib/periodo";
 import { formatHorarios } from "@/modules/calendario/components/etiquetas";
 import { eventosParaSocio } from "@/modules/calendario/eventos.service";
+import { agruparPorDia } from "@/modules/calendario/por-dia";
 import { claveDia, horaFin } from "@/modules/calendario/reglas";
 import {
   anotarEsperaAction,
   cancelarEventoAction,
   cancelarReservaAction,
   inscribirEventoAction,
+  ordenarActividadesAction,
   puntuarAction,
   reservarClaseAction,
   reservarSerieAction,
   salirEsperaAction,
 } from "@/modules/calendario/socio.actions";
+import { COOKIE_ORDEN_ACTIVIDADES, ordenActividades, type OrdenActividades } from "@/modules/calendario/vista";
 import { clasesParaSocio } from "@/modules/reservas/service";
 import { puntajesDelSocio } from "@/modules/actividades/puntajes.service";
 import { Aviso, Badge, Boton, Card, Titulo, type SearchParams } from "@/components/ui";
+
+type Actividad = Awaited<ReturnType<typeof clasesParaSocio>>[number];
+type Clase = Actividad["clases"][number];
+type Evento = Awaited<ReturnType<typeof eventosParaSocio>>[number];
 
 /** Botón de la acción que corresponde: cancelar, inscribirse, anotarse o salir de la lista de espera. */
 function AccionInscripcion({
@@ -65,6 +73,108 @@ function AccionInscripcion({
   );
 }
 
+/** Una clase con su acción. En la vista por fecha se titula con la actividad; por tipo, con el día. */
+function FilaClase({ slug, a, c, porFecha }: { slug: string; a: Actividad; c: Clase; porFecha: boolean }) {
+  const fecha = claveDia(c.fecha);
+  const lleno = c.reservas >= a.cupo;
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+      <span className={c.estado === "SUSPENDIDA" ? "text-red-700 line-through" : "text-slate-700"}>
+        <strong>{porFecha ? a.nombre : formatDiaCorto(c.fecha)}</strong> {c.hora}–{c.horaFin}
+        {c.destino && <span className="text-amber-700"> → {formatDiaCorto(c.destino.fecha)} {c.destino.hora}</span>}
+        {porFecha && <span className="text-slate-500"> · Clase{a.precioClase > 0 ? ` · ${formatPesos(a.precioClase)}` : ""}</span>}
+        {c.reservada && <span className="ml-2 no-underline"><Badge ok>Reservada</Badge></span>}
+      </span>
+      {c.estado === "SUSPENDIDA" ? (
+        <span className="text-xs text-red-700">Suspendida{c.motivo ? `: ${c.motivo}` : ""}</span>
+      ) : (
+        <span className="flex items-center gap-3">
+          <span className={`text-xs ${lleno ? "text-amber-700" : "text-slate-500"}`}>
+            {lleno ? "Completa" : `${a.cupo - c.reservas} de ${a.cupo} lugares`}
+          </span>
+          <AccionInscripcion
+            inscripto={c.reservada}
+            enEspera={c.enEspera}
+            lleno={lleno}
+            etiqueta="Reservar"
+            inscribir={reservarClaseAction.bind(null, slug, a.id, fecha, c.hora)}
+            cancelar={cancelarReservaAction.bind(null, slug, a.id, fecha, c.hora)}
+            anotar={anotarEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
+            salir={salirEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
+          />
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** Un evento con su acción (o "Informativo"). En la vista por fecha el día ya está en el título. */
+function FilaEvento({ slug, e, hoy, porFecha }: { slug: string; e: Evento; hoy: Date; porFecha: boolean }) {
+  const lleno = e.cupo !== null && e.inscriptos >= e.cupo;
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <div className="text-sm">
+        <p className="font-medium text-slate-800">
+          {e.titulo} {e.inscripto && <Badge ok>Inscripto</Badge>}
+        </p>
+        <p className="text-slate-600">
+          {porFecha ? "Evento · " : `${formatDiaCorto(e.fecha)} · `}
+          {e.hora}–{horaFin(e.hora, e.duracionMin)}
+          {e.lugar && ` · ${e.lugar}`}
+          {e.actividad && ` · Para quienes van a ${e.actividad.nombre}`}
+        </p>
+        {e.descripcion && <p className="text-slate-500">{e.descripcion}</p>}
+        {e.conInscripcion && (
+          <p className="text-xs text-slate-500">
+            {e.precio > 0 ? formatPesos(e.precio) : "Gratis"}
+            {e.cupo !== null && ` · ${lleno ? "Completo" : `quedan ${e.cupo - e.inscriptos} lugares`}`}
+          </p>
+        )}
+      </div>
+      {e.conInscripcion && e.fecha.getTime() <= hoy.getTime() ? (
+        <span className="text-xs text-slate-500">Es hoy: inscripción cerrada</span>
+      ) : e.conInscripcion ? (
+        <AccionInscripcion
+          inscripto={e.inscripto}
+          enEspera={e.enEspera}
+          lleno={lleno}
+          inscribir={inscribirEventoAction.bind(null, slug, e.id)}
+          cancelar={cancelarEventoAction.bind(null, slug, e.id)}
+          anotar={anotarEsperaAction.bind(null, slug, "evento", e.id)}
+          salir={salirEsperaAction.bind(null, slug, "evento", e.id)}
+        />
+      ) : (
+        <span className="text-xs text-slate-400">Informativo</span>
+      )}
+    </li>
+  );
+}
+
+/** Selector "Por tipo / Por fecha" (se guarda en una cookie, así sobrevive a las acciones). */
+function SelectorOrden({ slug, orden }: { slug: string; orden: OrdenActividades }) {
+  const opciones: [OrdenActividades, string][] = [
+    ["tipo", "Por tipo"],
+    ["fecha", "Por fecha"],
+  ];
+  return (
+    <div className="mb-4 flex items-center gap-2 text-sm">
+      <span className="text-slate-500">Ordenar:</span>
+      {opciones.map(([valor, etiqueta]) => (
+        <form key={valor} action={ordenarActividadesAction.bind(null, slug, valor)}>
+          <button
+            aria-pressed={orden === valor}
+            className={`rounded-full border px-3 py-1 ${
+              orden === valor ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {etiqueta}
+          </button>
+        </form>
+      ))}
+    </div>
+  );
+}
+
 export default async function ActividadesSocioPage({
   params,
   searchParams,
@@ -77,161 +187,132 @@ export default async function ActividadesSocioPage({
   const ahora = new Date();
   const hoy = inicioDelDia(ahora);
   const socioId = user.socioId!;
-  const [actividades, eventos, valoracion, msg] = await Promise.all([
+  const [actividades, eventos, valoracion, msg, galletas] = await Promise.all([
     clasesParaSocio(club.id, socioId, ahora, 14),
     eventosParaSocio(club.id, socioId, ahora),
     puntajesDelSocio(club.id, socioId, ahora),
     searchParams,
+    cookies(),
   ]);
+  const orden = ordenActividades(galletas.get(COOKIE_ORDEN_ACTIVIDADES)?.value);
 
   return (
     <>
       <Titulo sub="Reservá tus clases (próximas 2 semanas) e inscribite a los eventos del club">Actividades y eventos</Titulo>
       <Aviso {...leerAviso(msg)} />
-      <div className="flex flex-col gap-6">
-        {actividades.map((a) => (
-          <Card key={a.id} title={a.nombre}>
-            <p className="text-sm text-slate-600">
-              {formatHorarios(a.horarios)} · {a.precioClase > 0 ? `${formatPesos(a.precioClase)} por clase` : "Gratis"} · cupo {a.cupo}
-            </p>
-            {a.descripcion && <p className="text-sm text-slate-500">{a.descripcion}</p>}
-            {a.clases.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">No hay clases en las próximas 2 semanas.</p>
-            ) : (
-              <ul className="mt-3 divide-y divide-slate-100">
-                {a.clases.map((c) => {
-                  const fecha = claveDia(c.fecha);
-                  const lleno = c.reservas >= a.cupo;
-                  return (
-                    <li key={`${fecha}${c.hora}`} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
-                      <span className={c.estado === "SUSPENDIDA" ? "text-red-700 line-through" : "text-slate-700"}>
-                        <strong>{formatDiaCorto(c.fecha)}</strong> {c.hora}–{c.horaFin}
-                        {c.destino && <span className="text-amber-700"> → {formatDiaCorto(c.destino.fecha)} {c.destino.hora}</span>}
-                        {c.reservada && <span className="ml-2 no-underline"><Badge ok>Reservada</Badge></span>}
-                      </span>
-                      {c.estado === "SUSPENDIDA" ? (
-                        <span className="text-xs text-red-700">Suspendida{c.motivo ? `: ${c.motivo}` : ""}</span>
-                      ) : (
-                        <span className="flex items-center gap-3">
-                          <span className={`text-xs ${lleno ? "text-amber-700" : "text-slate-500"}`}>
-                            {lleno ? "Completa" : `${a.cupo - c.reservas} de ${a.cupo} lugares`}
-                          </span>
-                          <AccionInscripcion
-                            inscripto={c.reservada}
-                            enEspera={c.enEspera}
-                            lleno={lleno}
-                            etiqueta="Reservar"
-                            inscribir={reservarClaseAction.bind(null, slug, a.id, fecha, c.hora)}
-                            cancelar={cancelarReservaAction.bind(null, slug, a.id, fecha, c.hora)}
-                            anotar={anotarEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
-                            salir={salirEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
-                          />
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <form action={reservarSerieAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
-              <span className="self-center text-slate-600">Reservar todas las de</span>
-              <select name="horario" aria-label="Horario" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
-                {a.horarios.map((h) => (
-                  <option key={`${h.diaSemana}|${h.hora}`} value={`${h.diaSemana}|${h.hora}`}>
-                    {formatHorarios([h])}
-                  </option>
-                ))}
-              </select>
-              <span className="self-center text-slate-600">por</span>
-              <select name="semanas" defaultValue="4" aria-label="Semanas" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
-                {[1, 2, 4, 8, 12].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? "semana" : "semanas"}
-                  </option>
-                ))}
-              </select>
-              <Boton variante="secundario">Reservar</Boton>
-            </form>
-            {valoracion.puedePuntuar.has(a.id) && (
-              <form action={puntuarAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
-                <span className="self-center text-slate-600">
-                  {valoracion.puntajes.get(a.id) ? `Tu puntaje: ${valoracion.puntajes.get(a.id)!.estrellas.toLocaleString("es-AR")} ★ ·` : "¿Qué te pareció?"}
-                </span>
-                <select
-                  name="estrellas"
-                  defaultValue={String(valoracion.puntajes.get(a.id)?.estrellas ?? 5)}
-                  aria-label="Estrellas"
-                  className="rounded-lg border border-slate-300 bg-white px-2 py-1"
-                >
-                  {Array.from({ length: 10 }, (_, i) => (10 - i) / 2).map((n) => (
-                    <option key={n} value={n}>
-                      {"★".repeat(Math.floor(n))}
-                      {n % 1 ? "½" : ""} {n.toLocaleString("es-AR")}
+      <SelectorOrden slug={slug} orden={orden} />
+      {orden === "fecha" ? (
+        <PorFecha slug={slug} actividades={actividades} eventos={eventos} hoy={hoy} />
+      ) : (
+        <div className="flex flex-col gap-6">
+          {actividades.map((a) => (
+            <Card key={a.id} title={a.nombre}>
+              <p className="text-sm text-slate-600">
+                {formatHorarios(a.horarios)} · {a.precioClase > 0 ? `${formatPesos(a.precioClase)} por clase` : "Gratis"} · cupo {a.cupo}
+              </p>
+              {a.descripcion && <p className="text-sm text-slate-500">{a.descripcion}</p>}
+              {a.clases.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">No hay clases en las próximas 2 semanas.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-slate-100">
+                  {a.clases.map((c) => (
+                    <FilaClase key={`${claveDia(c.fecha)}${c.hora}`} slug={slug} a={a} c={c} porFecha={false} />
+                  ))}
+                </ul>
+              )}
+              <form action={reservarSerieAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
+                <span className="self-center text-slate-600">Reservar todas las de</span>
+                <select name="horario" aria-label="Horario" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                  {a.horarios.map((h) => (
+                    <option key={`${h.diaSemana}|${h.hora}`} value={`${h.diaSemana}|${h.hora}`}>
+                      {formatHorarios([h])}
                     </option>
                   ))}
                 </select>
-                <input
-                  name="comentario"
-                  defaultValue={valoracion.puntajes.get(a.id)?.comentario ?? ""}
-                  placeholder="Comentario (opcional)"
-                  maxLength={280}
-                  aria-label="Comentario"
-                  className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1"
-                />
-                <Boton variante="secundario">{valoracion.puntajes.get(a.id) ? "Actualizar" : "Puntuar"}</Boton>
+                <span className="self-center text-slate-600">por</span>
+                <select name="semanas" defaultValue="4" aria-label="Semanas" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                  {[1, 2, 4, 8, 12].map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "semana" : "semanas"}
+                    </option>
+                  ))}
+                </select>
+                <Boton variante="secundario">Reservar</Boton>
               </form>
+              {valoracion.puedePuntuar.has(a.id) && (
+                <form action={puntuarAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
+                  <span className="self-center text-slate-600">
+                    {valoracion.puntajes.get(a.id) ? `Tu puntaje: ${valoracion.puntajes.get(a.id)!.estrellas.toLocaleString("es-AR")} ★ ·` : "¿Qué te pareció?"}
+                  </span>
+                  <select
+                    name="estrellas"
+                    defaultValue={String(valoracion.puntajes.get(a.id)?.estrellas ?? 5)}
+                    aria-label="Estrellas"
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => (10 - i) / 2).map((n) => (
+                      <option key={n} value={n}>
+                        {"★".repeat(Math.floor(n))}
+                        {n % 1 ? "½" : ""} {n.toLocaleString("es-AR")}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    name="comentario"
+                    defaultValue={valoracion.puntajes.get(a.id)?.comentario ?? ""}
+                    placeholder="Comentario (opcional)"
+                    maxLength={280}
+                    aria-label="Comentario"
+                    className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1"
+                  />
+                  <Boton variante="secundario">{valoracion.puntajes.get(a.id) ? "Actualizar" : "Puntuar"}</Boton>
+                </form>
+              )}
+            </Card>
+          ))}
+
+          <Card title="Próximos eventos">
+            {eventos.length === 0 ? (
+              <p className="text-sm text-slate-500">No hay eventos próximos.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {eventos.map((e) => (
+                  <FilaEvento key={e.id} slug={slug} e={e} hoy={hoy} porFecha={false} />
+                ))}
+              </ul>
             )}
           </Card>
-        ))}
-
-        <Card title="Próximos eventos">
-          {eventos.length === 0 ? (
-            <p className="text-sm text-slate-500">No hay eventos próximos.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {eventos.map((e) => {
-                const lleno = e.cupo !== null && e.inscriptos >= e.cupo;
-                return (
-                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div className="text-sm">
-                      <p className="font-medium text-slate-800">
-                        {e.titulo} {e.inscripto && <Badge ok>Inscripto</Badge>}
-                      </p>
-                      <p className="text-slate-600">
-                        {formatDiaCorto(e.fecha)} · {e.hora}–{horaFin(e.hora, e.duracionMin)}
-                        {e.lugar && ` · ${e.lugar}`}
-                        {e.actividad && ` · Para quienes van a ${e.actividad.nombre}`}
-                      </p>
-                      {e.descripcion && <p className="text-slate-500">{e.descripcion}</p>}
-                      {e.conInscripcion && (
-                        <p className="text-xs text-slate-500">
-                          {e.precio > 0 ? formatPesos(e.precio) : "Gratis"}
-                          {e.cupo !== null && ` · ${lleno ? "Completo" : `quedan ${e.cupo - e.inscriptos} lugares`}`}
-                        </p>
-                      )}
-                    </div>
-                    {e.conInscripcion && e.fecha.getTime() <= hoy.getTime() ? (
-                      <span className="text-xs text-slate-500">Es hoy: inscripción cerrada</span>
-                    ) : e.conInscripcion ? (
-                      <AccionInscripcion
-                        inscripto={e.inscripto}
-                        enEspera={e.enEspera}
-                        lleno={lleno}
-                        inscribir={inscribirEventoAction.bind(null, slug, e.id)}
-                        cancelar={cancelarEventoAction.bind(null, slug, e.id)}
-                        anotar={anotarEsperaAction.bind(null, slug, "evento", e.id)}
-                        salir={salirEsperaAction.bind(null, slug, "evento", e.id)}
-                      />
-                    ) : (
-                      <span className="text-xs text-slate-400">Informativo</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
-      </div>
+        </div>
+      )}
     </>
+  );
+}
+
+/** Vista por fecha: un bloque por día con sus clases y eventos mezclados, por hora. */
+function PorFecha({ slug, actividades, eventos, hoy }: { slug: string; actividades: Actividad[]; eventos: Evento[]; hoy: Date }) {
+  const clases = actividades.flatMap((a) => a.clases.map((c) => ({ ...c, actividad: a })));
+  const dias = agruparPorDia(clases, eventos);
+  if (dias.length === 0)
+    return (
+      <Card>
+        <p className="text-sm text-slate-500">No hay clases ni eventos próximos.</p>
+      </Card>
+    );
+  return (
+    <div className="flex flex-col gap-6">
+      {dias.map((d) => (
+        <Card key={claveDia(d.fecha)} title={formatDiaLargo(d.fecha)}>
+          <ul className="divide-y divide-slate-100">
+            {d.items.map((i) =>
+              i.tipo === "clase" ? (
+                <FilaClase key={`c${i.item.actividad.id}${i.item.hora}`} slug={slug} a={i.item.actividad} c={i.item} porFecha />
+              ) : (
+                <FilaEvento key={`e${i.item.id}`} slug={slug} e={i.item} hoy={hoy} porFecha />
+              ),
+            )}
+          </ul>
+        </Card>
+      ))}
+    </div>
   );
 }

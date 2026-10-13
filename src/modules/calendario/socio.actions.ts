@@ -2,6 +2,8 @@
 
 // Server Actions del socio: reservas de clases, eventos y lista de espera. El socioId sale
 // siempre de la sesión, nunca del formulario; vuelven a la pestaña Actividades y eventos.
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { ejecutar } from "@/lib/action";
 import { formatPesos } from "@/lib/format";
 import { requireClub } from "@/lib/session";
@@ -10,7 +12,7 @@ import { puntuar } from "@/modules/actividades/puntajes.service";
 import { claseSchema } from "@/modules/reservas/schema";
 import { cancelarReserva, reservar, reservarSerie } from "@/modules/reservas/service";
 import { cancelarInscripcionEvento, inscribirEvento } from "./eventos.service";
-import { rutaActividadesSocio } from "./vista";
+import { COOKIE_ORDEN_ACTIVIDADES, ordenActividades, rutaActividadesSocio } from "./vista";
 
 const conCargo = (texto: string, cargo: { monto: number } | null) =>
   cargo ? `${texto}. Se agregó el cargo de ${formatPesos(cargo.monto)} a tu cuenta` : texto;
@@ -92,4 +94,11 @@ export async function puntuarAction(slug: string, actividadId: string, formData:
     });
     return "¡Gracias por tu puntaje!";
   });
+}
+
+/** Cambia el orden de la pestaña (por tipo o por fecha); queda guardado para las próximas visitas. */
+export async function ordenarActividadesAction(slug: string, orden: string) {
+  await requireClub(slug, "socio");
+  (await cookies()).set(COOKIE_ORDEN_ACTIVIDADES, ordenActividades(orden), { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  redirect(rutaActividadesSocio(slug));
 }
