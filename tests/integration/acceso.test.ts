@@ -50,6 +50,14 @@ describe("link mágico", () => {
     expect(await autorizarLink(token)).toBeNull();
   });
 
+  it("desde la página de un club solo manda el link a usuarios de ese club", async () => {
+    const [norte, sur] = [await f.crearClub(), await f.crearClub()];
+    await f.crearUsuario({ email: "ana@norte.com", clubId: norte.id });
+    expect(await solicitarLink("ana@norte.com", ahora, sur.id)).toEqual({ link: null });
+    expect(await db.mensajeSaliente.count()).toBe(0);
+    expect((await solicitarLink("ana@norte.com", ahora, norte.id)).link).not.toBeNull();
+  });
+
   it("a un email no registrado no le manda nada (y la respuesta no lo distingue salvo el link de demo)", async () => {
     expect(await solicitarLink("nadie@club.com", ahora)).toEqual({ link: null });
     expect(await db.mensajeSaliente.count()).toBe(0);

@@ -8,13 +8,15 @@ import { useActionState } from "react";
 import { Boton, Campo } from "@/components/ui";
 import { solicitarLinkAction, type EstadoLink } from "../actions";
 
-const DEMOS = [
-  { email: "admin@gestiondesocios.com", rol: "Admin general" },
-  { email: "admin@demo.club", rol: "Admin del club" },
-  { email: "socio@demo.club", rol: "Socio" },
+export const DEMOS = [
+  { email: "admin@gestiondesocios.com", rol: "Admin general", club: null },
+  { email: "admin@demo.club", rol: "Admin del club", club: "demo" },
+  { email: "socio@demo.club", rol: "Socio", club: "demo" },
 ];
 
-export function LoginHome({ demo, error }: { demo: boolean; error?: string }) {
+/** Con `club`, el login es el de la página de ese club: solo sus usuarios y sus usuarios demo. */
+export function LoginHome({ demo, error, club }: { demo: boolean; error?: string; club?: string }) {
+  const demos = club ? DEMOS.filter((d) => d.club === club) : DEMOS;
   const [estado, pedirLink, enviando] = useActionState<EstadoLink, FormData>(solicitarLinkAction, { enviado: false });
 
   return (
@@ -35,6 +37,7 @@ export function LoginHome({ demo, error }: { demo: boolean; error?: string }) {
         </div>
       ) : (
         <form action={pedirLink} className="flex flex-col gap-3">
+          {club && <input type="hidden" name="club" value={club} />}
           <Campo label="Tu email" name="email" type="email" placeholder="nombre@ejemplo.com" required autoComplete="email" />
           {estado.error && <p className="text-sm text-red-700">{estado.error}</p>}
           <Boton type="submit" disabled={enviando}>
@@ -44,11 +47,11 @@ export function LoginHome({ demo, error }: { demo: boolean; error?: string }) {
         </form>
       )}
 
-      {demo && (
+      {demo && demos.length > 0 && (
         <div className="border-t border-slate-100 pt-4">
           <p className="mb-2 text-sm font-medium text-slate-700">Probar la demo como</p>
           <div className="flex flex-wrap gap-2">
-            {DEMOS.map((d) => (
+            {demos.map((d) => (
               <Boton key={d.email} type="button" variante="secundario" onClick={() => signIn("demo", { email: d.email, callbackUrl: "/" })}>
                 {d.rol}
               </Boton>

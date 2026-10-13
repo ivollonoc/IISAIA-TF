@@ -11,12 +11,14 @@ const linkDe = (token: string) => `${urlBase()}/ingresar/${token}`;
 const normalizar = (email: string) => email.trim().toLowerCase();
 
 /**
- * Manda un link para entrar (vale 15 minutos y una vez) si el email está registrado. Devuelve el
- * link (o null) para que la pantalla de demo pueda mostrarlo cuando el mail es simulado.
+ * Manda un link para entrar (vale 15 minutos y una vez) si el email está registrado (y, con
+ * `clubId`, si es de ese club). Devuelve el link (o null) para que la pantalla de demo pueda
+ * mostrarlo cuando el mail es simulado.
  */
-export async function solicitarLink(email: string, ahora: Date = new Date()): Promise<{ link: string | null }> {
+export async function solicitarLink(email: string, ahora: Date = new Date(), clubId?: string): Promise<{ link: string | null }> {
   const usuario = await db.usuario.findUnique({ where: { email: normalizar(email) } });
-  if (!usuario) return { link: null };
+  // Desde la página (o el subdominio) de un club, solo entran sus usuarios.
+  if (!usuario || (clubId && usuario.clubId !== clubId)) return { link: null };
   const link = linkDe(await crearToken(usuario.id, "LOGIN", ahora));
   await proveedores.email(
     usuario.clubId,

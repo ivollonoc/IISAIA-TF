@@ -20,7 +20,11 @@ export interface EstadoLink {
 export async function solicitarLinkAction(_previo: EstadoLink, formData: FormData): Promise<EstadoLink> {
   const email = z.string().trim().email().safeParse(formData.get("email"));
   if (!email.success) return { enviado: false, error: "Ingresá un email válido" };
-  const { link } = await solicitarLink(email.data);
+  // En la página de un club (o su subdominio) solo entran sus usuarios.
+  const slug = formData.get("club");
+  const club = typeof slug === "string" && slug ? await db.club.findUnique({ where: { slug }, select: { id: true } }) : null;
+  if (slug && !club) return { enviado: true };
+  const { link } = await solicitarLink(email.data, new Date(), club?.id);
   const mostrar = demoHabilitado && proveedorEmail() === "simulado";
   return { enviado: true, linkDemo: mostrar ? link : undefined };
 }

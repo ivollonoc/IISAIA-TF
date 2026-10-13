@@ -149,3 +149,12 @@ DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate sta
 Opcional: crear antes un branch en Neon como respaldo.
 
 > `DEMO_LOGIN` permite entrar sin contraseña a los usuarios demo: usarlo solo para demos.
+
+### Subdominio por club (opcional)
+
+Con `TENANT_MODE=subdomain` y `ROOT_DOMAIN=<dominio>` cada club tiene su dirección: `atlas.<dominio>` muestra la página del club y sus secciones quedan en `atlas.<dominio>/c/atlas/…`; `<dominio>/c/atlas` redirige al subdominio. La sesión vale para el dominio y todos sus subdominios. Sin estas variables (o en los previews de Vercel) todo sigue funcionando por `/c/<slug>`.
+
+1. En Vercel → Settings → Domains, agregar `<dominio>` y el comodín `*.<dominio>`. El comodín exige que el dominio use los nameservers de Vercel (en NIC.ar: delegar el dominio a `ns1.vercel-dns.com` y `ns2.vercel-dns.com`).
+2. Cargar `TENANT_MODE=subdomain`, `ROOT_DOMAIN=<dominio>` y `APP_URL=https://<dominio>`, y volver a desplegar.
+
+Para probarlo en local: `TENANT_MODE=subdomain ROOT_DOMAIN=localhost:3000 npm run dev` y abrir `http://demo.localhost:3000` (Chrome y Edge resuelven `*.localhost` solos; en localhost cada subdominio tiene su propia sesión).

@@ -30,9 +30,22 @@ if (demoHabilitado) {
   );
 }
 
+// Con subdominios por club, la cookie de sesión vale para el dominio y todos sus subdominios
+// (en localhost los navegadores no aceptan cookies de dominio: cada subdominio tiene la suya).
+const root = process.env.ROOT_DOMAIN?.split(":")[0];
+const dominioCookie = process.env.TENANT_MODE === "subdomain" && root && root !== "localhost" ? `.${root}` : undefined;
+
 export const authOptions: NextAuthOptions = {
   providers,
   session: { strategy: "jwt" },
+  ...(dominioCookie && {
+    cookies: {
+      sessionToken: {
+        name: "__Secure-next-auth.session-token",
+        options: { httpOnly: true, sameSite: "lax", path: "/", secure: true, domain: dominioCookie },
+      },
+    },
+  }),
   pages: { signIn: "/", error: "/" },
   callbacks: {
     // En el primer login cargamos rol/club desde la base y quedan en el token.
