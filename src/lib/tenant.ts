@@ -1,12 +1,23 @@
-// Resolución del club por subdominio (TENANT_MODE=subdomain): atlas.clubdesocios.com.ar muestra la
-// página del club y sus secciones viven en atlas.clubdesocios.com.ar/c/atlas/…. Funciones puras (sin
-// I/O), usadas por el middleware.
+// Subdominio por club (TENANT_MODE=subdomain): atlas.clubdesocios.com.ar es la página del club y sus
+// áreas viven en atlas.clubdesocios.com.ar/admin y /socio, que el middleware reescribe a las rutas
+// internas /c/atlas/…. Funciones puras (sin I/O): `decidirRuta` la usa el middleware; `urlClub` y
+// `urlVisible`, todos los links y redirecciones.
 
 export type Tenant = { tipo: "raiz" } | { tipo: "club"; slug: string } | { tipo: "otro" };
 export type Decision = { accion: "seguir" } | { accion: "reescribir"; destino: string } | { accion: "redirigir"; destino: string };
+export type ConfigTenant = { modo: "path" | "subdomain"; root: string };
 
 /** Rutas que no son de un club y se sirven igual en cualquier host. */
 const COMPARTIDAS = ["/api", "/_next", "/avisos", "/ingresar", "/sin-acceso", "/login", "/favicon"];
+
+/** Ruta interna de un club: /c/<slug>, /c/<slug>/… o /c/<slug>?… */
+const RUTA_CLUB = /^\/c\/([a-z0-9-]+)([/?].*)?$/;
+
+/** Modo y dominio raíz desde el entorno (next.config.ts los expone también al cliente). */
+export function configTenant(): ConfigTenant {
+  const root = process.env.ROOT_DOMAIN ?? "";
+  return { modo: process.env.TENANT_MODE === "subdomain" && root ? "subdomain" : "path", root };
+}
 
 export function tenantDeHost(host: string | null, root: string): Tenant {
   if (!host) return { tipo: "otro" };
@@ -22,35 +33,34 @@ export function tenantDeHost(host: string | null, root: string): Tenant {
 
 const protocolo = (root: string) => (root.startsWith("localhost") ? "http" : "https");
 
-/** URL de una sección del club según el modo: ruta (/c/<slug>/…) o subdominio. */
-export function urlClub(slug: string, ruta: string, cfg: { modo: "path" | "subdomain"; root: string }): string {
+/** URL de una sección del club (`ruta` = "/admin/socios", "?x=1" o ""): /c/<slug>… o su subdominio. */
+export function urlClub(slug: string, ruta: string, cfg: ConfigTenant = configTenant()): string {
   if (cfg.modo === "path") return `/c/${slug}${ruta}`;
-  return `${protocolo(cfg.root)}://${slug}.${cfg.root}${ruta || "/"}`;
+  return `${protocolo(cfg.root)}://${slug}.${cfg.root}${ruta.startsWith("/") ? ruta : `/${ruta}`}`;
+}
+
+/** Traduce una ruta interna (/c/<slug>/…) a la que ve el usuario; las demás quedan igual. */
+export function urlVisible(ruta: string, cfg: ConfigTenant = configTenant()): string {
+  const deClub = RUTA_CLUB.exec(ruta);
+  return deClub ? urlClub(deClub[1], deClub[2] ?? "", cfg) : ruta;
 }
 
 /**
  * Qué hacer con un pedido en modo subdominio. `navegacion`: el navegador está cargando una página
- * (header sec-fetch-mode=navigate). En el dominio raíz solo se redirigen esas: Next renderiza el
- * redirect de un Server Action con un fetch interno contra el origen del servidor (el dominio raíz)
- * y, si lo mandáramos a otro host, fetch descartaría la cookie de sesión.
+ * (header sec-fetch-mode=navigate). Las rutas internas /c/<slug>/… solo se redirigen en una
+ * navegación: Next renderiza el redirect de un Server Action con un fetch interno a esa ruta, y los
+ * prefetch y links guardados también pueden traerla.
  */
 export function decidirRuta(host: string | null, ruta: string, root: string, opciones: { navegacion?: boolean } = {}): Decision {
   const tenant = tenantDeHost(host, root);
   if (tenant.tipo === "otro") return { accion: "seguir" };
-  const deClub = /^\/c\/([a-z0-9-]+)(\/.*)?$/.exec(ruta);
+  const cfg: ConfigTenant = { modo: "subdomain", root };
+  const deClub = RUTA_CLUB.exec(ruta);
 
-  if (tenant.tipo === "raiz") {
-    // /c/<slug>/… en el dominio raíz: la dirección canónica es el subdominio del club.
-    if (!opciones.navegacion) return { accion: "seguir" };
-    return deClub ? { accion: "redirigir", destino: urlClub(deClub[1], deClub[2] ?? "", { modo: "subdomain", root }) } : { accion: "seguir" };
-  }
   if (deClub) {
-    if (deClub[1] === tenant.slug) return { accion: "seguir" };
-    return { accion: "redirigir", destino: urlClub(deClub[1], deClub[2] ?? "", { modo: "subdomain", root }) };
+    return opciones.navegacion ? { accion: "redirigir", destino: urlClub(deClub[1], deClub[2] ?? "", cfg) } : { accion: "seguir" };
   }
+  if (tenant.tipo === "raiz") return { accion: "seguir" };
   if (COMPARTIDAS.some((p) => ruta === p || ruta.startsWith(`${p}/`))) return { accion: "seguir" };
-  // La portada del subdominio es la página pública del club; el resto de las rutas se redirige a
-  // /c/<slug>/… en el mismo subdominio, que es como las arman los links y redirects de la app.
-  if (ruta === "/") return { accion: "reescribir", destino: `/c/${tenant.slug}` };
-  return { accion: "redirigir", destino: `/c/${tenant.slug}${ruta}` };
+  return { accion: "reescribir", destino: ruta === "/" ? `/c/${tenant.slug}` : `/c/${tenant.slug}${ruta}` };
 }
