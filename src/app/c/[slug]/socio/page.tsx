@@ -52,7 +52,18 @@ export default async function SocioHomePage({
           {cuenta.proximoVencimiento && (
             <p className="text-sm text-slate-600">Próximo vencimiento: {formatDia(cuenta.proximoVencimiento)}</p>
           )}
-          {cuenta.pendientes.length > 0 && (
+          {socio.titular ? (
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Tus pagos los hace el titular de tu grupo familiar, {socio.titular.nombre} {socio.titular.apellido}.
+            </p>
+          ) : socio._count.familiares > 0 ? (
+            <Link
+              href={`/c/${slug}/socio/pagos`}
+              className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Pagar los cargos del grupo
+            </Link>
+          ) : cuenta.pendientes.length > 0 && (
             <Link
               href={`/c/${slug}/socio/pagar?${cuenta.pendientes.map((c) => `cargos=${c.id}`).join("&")}`}
               className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
@@ -96,8 +107,8 @@ export default async function SocioHomePage({
         <div className="lg:col-span-3">
           <Card title="Cuenta corriente">
             <form action={`/c/${slug}/socio/pagar`} method="get" className="flex flex-col gap-4">
-              <MovimientosTabla movimientos={cuenta.movimientos} seleccion="cargos" />
-              {cuenta.pendientes.length > 0 && (
+              <MovimientosTabla movimientos={cuenta.movimientos} seleccion={socio.titular ? undefined : "cargos"} />
+              {cuenta.pendientes.length > 0 && !socio.titular && (
                 <div>
                   <BotonPagarSeleccion name="cargos" />
                 </div>

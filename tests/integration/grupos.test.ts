@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Club } from "@prisma/client";
 import { db } from "@/lib/db";
-import { agregarAlGrupo, integrantesDelGrupo, quitarDelGrupo, resumenGrupos } from "@/modules/socios/grupos.service";
+import { agregarAlGrupo, integrantesDelGrupo, pendientesDelGrupo, quitarDelGrupo, resumenGrupos } from "@/modules/socios/grupos.service";
 import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 
@@ -31,6 +31,26 @@ describe("agregarAlGrupo", () => {
     await expect(agregarAlGrupo(club.id, { titularId: dani.id, socioId: ana.id })).rejects.toThrow("Ese socio es titular de otro grupo");
     const ajeno = await f.crearSocio((await f.crearClub()).id);
     await expect(agregarAlGrupo(club.id, { titularId: ana.id, socioId: ajeno.id })).rejects.toThrow("Socio no encontrado");
+  });
+});
+
+describe("pendientesDelGrupo", () => {
+  it("lista los cargos pendientes del titular y sus familiares, con el socio y si está vencido", async () => {
+    const hoy = new Date(Date.UTC(2026, 9, 15, 15));
+    const [ana, beto] = [await socio("Ana"), await socio("Beto")];
+    await agregarAlGrupo(club.id, { titularId: ana.id, socioId: beto.id });
+    await f.crearCargo(club.id, ana.id, { monto: 15000, vencimiento: new Date(Date.UTC(2026, 9, 20)) });
+    await f.crearCargo(club.id, beto.id, { monto: 8000, vencimiento: new Date(Date.UTC(2026, 9, 10)) });
+    await f.crearCargo(club.id, beto.id, { monto: 1, estado: "PAGADO" });
+    await f.crearCargo(club.id, (await socio("Otro")).id);
+
+    const r = await pendientesDelGrupo(club.id, ana.id, hoy);
+    expect(r.pendientes.map((c) => [c.socio.nombre, c.monto, c.vencido])).toEqual([
+      ["Beto", 8000, true],
+      ["Ana", 15000, false],
+    ]);
+    expect(r.total).toBe(23000);
+    expect(r.integrantes.map((s) => s.nombre)).toEqual(["Ana", "Beto"]);
   });
 });
 

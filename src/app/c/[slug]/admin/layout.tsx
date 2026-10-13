@@ -20,6 +20,7 @@ export default async function AdminClubLayout({
         items={[
           { href: base, label: "Resumen" },
           { href: `${base}/socios`, label: "Socios" },
+          { href: `${base}/grupos`, label: "Grupos familiares" },
           { href: `${base}/cuenta`, label: "Cuenta corriente" },
           { href: `${base}/tipos`, label: "Tipos de socio" },
           { href: `${base}/agenda`, label: "Agenda" },

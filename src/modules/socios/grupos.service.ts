@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
+import { estaVencido } from "@/modules/cuenta-corriente/reglas";
 
 const grupoSchema = z.object({ titularId: z.string().min(1, "Elegí el titular"), socioId: z.string().min(1, "Elegí el socio") });
 
@@ -34,6 +35,18 @@ export async function integrantesDelGrupo(clubId: string, socioId: string) {
   if (!socio) throw new DomainError("Socio no encontrado");
   const { familiares, ...titular } = socio;
   return [titular, ...familiares];
+}
+
+/** Cargos pendientes de todo el grupo (para la pestaña Pagos del titular), por vencimiento. */
+export async function pendientesDelGrupo(clubId: string, socioId: string, hoy: Date = new Date()) {
+  const integrantes = await integrantesDelGrupo(clubId, socioId);
+  const cargos = await db.cargo.findMany({
+    where: { clubId, socioId: { in: integrantes.map((s) => s.id) }, estado: "PENDIENTE" },
+    orderBy: [{ vencimiento: "asc" }, { createdAt: "asc" }],
+    include: { socio: { select: { nombre: true, apellido: true } } },
+  });
+  const pendientes = cargos.map((c) => ({ ...c, vencido: estaVencido(c, hoy) }));
+  return { integrantes, pendientes, total: pendientes.reduce((s, c) => s + c.monto, 0) };
 }
 
 /** Indicadores y lista de grupos del club (titulares con al menos un familiar). */

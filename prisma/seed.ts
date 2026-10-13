@@ -57,6 +57,9 @@ async function main() {
   }
   // Juan (socios[3]) no paga el mes anterior: queda moroso.
   const [lucia, martin, sofia, , valentina] = socios;
+  // Grupos familiares: Lucía paga por Sofía; Martín, por Valentina.
+  await prisma.socio.update({ where: { id: sofia.id }, data: { titularId: lucia.id } });
+  await prisma.socio.update({ where: { id: valentina.id }, data: { titularId: martin.id } });
   const cuota = (s: Socio) => (s.tipoSocioId === activo.id ? activo.cuotaMensual : cadete.cuotaMensual);
 
   const actividad = (nombre: string, cupo: number, arancel: number, horarios: { diaSemana: number; hora: string }[]) =>

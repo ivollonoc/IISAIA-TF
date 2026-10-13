@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { db } from "@/lib/db";
 import { requireClub } from "@/lib/session";
 import { Tabs } from "@/components/Tabs";
 
@@ -10,8 +11,10 @@ export default async function SocioLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { club } = await requireClub(slug, "socio");
+  const { club, user } = await requireClub(slug, "socio");
   const base = `/c/${slug}/socio`;
+  // El titular de un grupo familiar tiene la pestaña Pagos (los cargos de todo el grupo).
+  const familiares = await db.socio.count({ where: { clubId: club.id, titularId: user.socioId! } });
 
   return (
     <>
@@ -19,6 +22,7 @@ export default async function SocioLayout({
       <Tabs
         items={[
           { href: base, label: "Mi cuenta" },
+          ...(familiares > 0 ? [{ href: `${base}/pagos`, label: "Pagos del grupo" }] : []),
           { href: `${base}/actividades`, label: "Actividades y eventos" },
           { href: `${base}/calendario`, label: "Calendario" },
         ]}

@@ -4,6 +4,7 @@
 // (los formularios no son una barrera de seguridad).
 import { datos, ejecutar, rutaAdmin } from "@/lib/action";
 import { requireClub } from "@/lib/session";
+import { agregarAlGrupo, quitarDelGrupo } from "./grupos.service";
 import { actualizarSocio, cambiarEstadoSocio, crearSocio } from "./service";
 
 export async function crearSocioAction(slug: string, formData: FormData) {
@@ -24,5 +25,21 @@ export async function cambiarEstadoSocioAction(slug: string, socioId: string, ac
   await ejecutar(`${rutaAdmin(slug)}/socios/${socioId}`, async () => {
     const { club } = await requireClub(slug, "admin");
     await cambiarEstadoSocio(club.id, socioId, activo);
+  });
+}
+
+export async function agregarAlGrupoAction(slug: string, formData: FormData) {
+  await ejecutar(`${rutaAdmin(slug)}/grupos`, async () => {
+    const { club } = await requireClub(slug, "admin");
+    await agregarAlGrupo(club.id, datos(formData));
+    return "Socio agregado al grupo familiar";
+  });
+}
+
+export async function quitarDelGrupoAction(slug: string, socioId: string) {
+  await ejecutar(`${rutaAdmin(slug)}/grupos`, async () => {
+    const { club } = await requireClub(slug, "admin");
+    await quitarDelGrupo(club.id, socioId);
+    return "Socio quitado del grupo familiar";
   });
 }

@@ -20,6 +20,8 @@ export async function obtenerSocio(clubId: string, socioId: string) {
     include: {
       tipoSocio: true,
       inscripciones: { include: { actividad: true } },
+      titular: { select: { id: true, nombre: true, apellido: true } },
+      _count: { select: { familiares: true } },
     },
   });
   if (!socio) throw new DomainError("Socio no encontrado");

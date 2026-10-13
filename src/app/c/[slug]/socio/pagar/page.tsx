@@ -31,6 +31,8 @@ export default async function PagarPage({
     error ??= msg;
   }
 
+  const variosSocios = new Set(checkout?.cargos.map((c) => c.socioId)).size > 1;
+
   return (
     <>
       <Titulo sub="Pago online con tarjeta">Pagar</Titulo>
@@ -38,9 +40,10 @@ export default async function PagarPage({
       {checkout ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Detalle">
-            <Tabla headers={["Concepto", "Vence", "Monto"]}>
+            <Tabla headers={variosSocios ? ["Socio", "Concepto", "Vence", "Monto"] : ["Concepto", "Vence", "Monto"]}>
               {checkout.cargos.map((c) => (
                 <tr key={c.id}>
+                  {variosSocios && <td className="py-2 pr-4">{c.socio.nombre}</td>}
                   <td className="py-2 pr-4">{c.descripcion}</td>
                   <td className="py-2 pr-4">{formatDia(c.vencimiento)}</td>
                   <td className="py-2 pr-4">{formatPesos(c.monto)}</td>
