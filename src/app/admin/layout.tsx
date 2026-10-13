@@ -11,6 +11,7 @@ export default async function AdminGeneralLayout({ children }: { children: React
         items={[
           { href: "/admin", label: "Clubes" },
           { href: "/admin/avisos", label: "Avisos" },
+          { href: "/admin/reportes", label: "Reportes" },
         ]}
       />
       {children}

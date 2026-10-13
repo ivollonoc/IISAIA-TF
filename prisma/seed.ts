@@ -18,6 +18,7 @@ async function main() {
   // anterior = período ya vencido, actual = período por vencer (nombres del caso habitual).
   const { vencido: anterior, porVencer: actual, diaVencimiento } = escenarioDemo();
   const demo = calendarioDemo();
+  const hoyMs = Date.now();
   const fechas = fechasDemo(escenarioDemo());
 
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
@@ -56,6 +57,17 @@ async function main() {
       }),
     );
   }
+  // Altas escalonadas en los últimos meses y una baja reciente (gráfico de altas y bajas).
+  for (const [i, s] of socios.entries()) {
+    const createdAt = new Date(hoyMs - (150 - i * 30) * DIA_MS);
+    await prisma.socio.update({ where: { id: s.id }, data: { createdAt } });
+  }
+  await prisma.socio.create({
+    data: {
+      clubId: club.id, nroSocio: socios.length + 1, nombre: "Pedro", apellido: "Sosa", dni: "31555666", tipoSocioId: activo.id,
+      activo: false, createdAt: new Date(hoyMs - 120 * DIA_MS), bajaAt: new Date(hoyMs - 20 * DIA_MS),
+    },
+  });
   // Juan (socios[3]) no paga el mes anterior: queda moroso.
   const [lucia, martin, sofia, , valentina] = socios;
   // Grupos familiares: Lucía paga por Sofía; Martín, por Valentina.
@@ -163,6 +175,31 @@ async function main() {
   await reservarDemo(sofia, futbol, 2);
   await reservarDemo(martin, yoga, 1);
   await reservarDemo(valentina, yoga, 1);
+  // Historia: reservas de las últimas 3 semanas (ocupación en los reportes) y puntajes de quienes fueron.
+  const pasadas = (a: typeof natacion) =>
+    clasesEnRango(a, new Date(hoyDia.getTime() - 21 * DIA_MS), hoyDia).filter(({ fecha, horario }) => {
+      const [h, m] = horario.hora.split(":").map(Number);
+      return fecha.getTime() + (h + 3) * 3_600_000 + m * 60_000 < ahora;
+    });
+  const historia: [Socio[], typeof natacion][] = [[[lucia, martin], natacion], [[martin, valentina], yoga], [[sofia], futbol]];
+  for (const [quienes, a] of historia) {
+    for (const { fecha, horario } of pasadas(a)) {
+      for (const s of quienes) {
+        await prisma.reserva.create({ data: { clubId: club.id, actividadId: a.id, socioId: s.id, fecha, hora: horario.hora } });
+      }
+    }
+  }
+  const puntajes: [Socio, typeof natacion, number, string | null][] = [
+    [lucia, natacion, 8, "Muy buena la profe; la pileta un poco fría"],
+    [martin, natacion, 9, null],
+    [martin, yoga, 9, "Excelente para arrancar el día"],
+    [valentina, yoga, 10, null],
+    [sofia, futbol, 7, "Me gustaría que sea dos veces por semana"],
+  ];
+  for (const [s, a, medias, comentario] of puntajes) {
+    await prisma.puntaje.create({ data: { clubId: club.id, actividadId: a.id, socioId: s.id, medias, comentario } });
+  }
+
   const [claseYoga] = proximas(yoga, 1);
   await prisma.listaEspera.create({
     data: { clubId: club.id, actividadId: yoga.id, socioId: lucia.id, fecha: claseYoga.fecha, hora: claseYoga.horario.hora },

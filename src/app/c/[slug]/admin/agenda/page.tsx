@@ -22,6 +22,7 @@ import { claveDia, horaFin, parsearDia, semanaDe, semanasDelMes, type ItemCalend
 import { calendarioClub, claveClase, obtenerClase } from "@/modules/calendario/service";
 import { hrefAgenda, vistaDeParams } from "@/modules/calendario/vista";
 import { clasesParaSocio, esperaDeClase, reservasDeClase } from "@/modules/reservas/service";
+import { puntajesDeActividad } from "@/modules/actividades/puntajes.service";
 import { Aviso, Boton, Card, Tabla, Titulo } from "@/components/ui";
 
 type Params = {
@@ -71,10 +72,11 @@ export default async function AgendaAdminPage({
     sp.actividad ? obtenerActividad(club.id, sp.actividad) : null,
   ]);
 
-  const [reservasClase, esperaClase, proximasClases] = await Promise.all([
+  const [reservasClase, esperaClase, proximasClases, valoracion] = await Promise.all([
     clase ? reservasDeClase(club.id, clase.actividad.id, clase.fecha, clase.horario.hora) : [],
     clase ? esperaDeClase(club.id, clase.actividad.id, clase.fecha, clase.horario.hora) : [],
     actividad ? clasesParaSocio(club.id, "", ahora, 14).then((as) => as.find((a) => a.id === actividad.id)?.clases ?? []) : [],
+    actividad ? puntajesDeActividad(club.id, actividad.id) : null,
   ]);
 
   const hrefItem = (i: ItemCalendario) =>
@@ -275,6 +277,18 @@ export default async function AgendaAdminPage({
                 {actividad.precioClase > 0 ? `${formatPesos(actividad.precioClase)} por clase` : "Gratis"}
               </p>
               {actividad.descripcion && <p className="mt-1 text-sm text-slate-600">{actividad.descripcion}</p>}
+              {valoracion && (
+                <div className="mt-2 text-sm">
+                  <p className="text-amber-700">
+                    {valoracion.votos ? `${valoracion.promedio.toLocaleString("es-AR")} ★ (${valoracion.votos} ${valoracion.votos === 1 ? "voto" : "votos"})` : "Todavía sin puntajes"}
+                  </p>
+                  {valoracion.comentarios.slice(0, 3).map((c) => (
+                    <p key={c.socio + c.fecha.getTime()} className="text-slate-500">
+                      “{c.comentario}” — {c.socio}, {c.estrellas.toLocaleString("es-AR")} ★
+                    </p>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 text-sm">
                 <p className="font-medium text-slate-700">Próximas clases</p>
                 {proximasClases.length === 0 ? (

@@ -10,11 +10,13 @@ import {
   cancelarEventoAction,
   cancelarReservaAction,
   inscribirEventoAction,
+  puntuarAction,
   reservarClaseAction,
   reservarSerieAction,
   salirEsperaAction,
 } from "@/modules/calendario/socio.actions";
 import { clasesParaSocio } from "@/modules/reservas/service";
+import { puntajesDelSocio } from "@/modules/actividades/puntajes.service";
 import { Aviso, Badge, Boton, Card, Titulo, type SearchParams } from "@/components/ui";
 
 /** Botón de la acción que corresponde: cancelar, inscribirse, anotarse o salir de la lista de espera. */
@@ -75,9 +77,10 @@ export default async function ActividadesSocioPage({
   const ahora = new Date();
   const hoy = inicioDelDia(ahora);
   const socioId = user.socioId!;
-  const [actividades, eventos, msg] = await Promise.all([
+  const [actividades, eventos, valoracion, msg] = await Promise.all([
     clasesParaSocio(club.id, socioId, ahora, 14),
     eventosParaSocio(club.id, socioId, ahora),
+    puntajesDelSocio(club.id, socioId, ahora),
     searchParams,
   ]);
 
@@ -149,6 +152,35 @@ export default async function ActividadesSocioPage({
               </select>
               <Boton variante="secundario">Reservar</Boton>
             </form>
+            {valoracion.puedePuntuar.has(a.id) && (
+              <form action={puntuarAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
+                <span className="self-center text-slate-600">
+                  {valoracion.puntajes.get(a.id) ? `Tu puntaje: ${valoracion.puntajes.get(a.id)!.estrellas.toLocaleString("es-AR")} ★ ·` : "¿Qué te pareció?"}
+                </span>
+                <select
+                  name="estrellas"
+                  defaultValue={String(valoracion.puntajes.get(a.id)?.estrellas ?? 5)}
+                  aria-label="Estrellas"
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1"
+                >
+                  {Array.from({ length: 10 }, (_, i) => (10 - i) / 2).map((n) => (
+                    <option key={n} value={n}>
+                      {"★".repeat(Math.floor(n))}
+                      {n % 1 ? "½" : ""} {n.toLocaleString("es-AR")}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  name="comentario"
+                  defaultValue={valoracion.puntajes.get(a.id)?.comentario ?? ""}
+                  placeholder="Comentario (opcional)"
+                  maxLength={280}
+                  aria-label="Comentario"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1"
+                />
+                <Boton variante="secundario">{valoracion.puntajes.get(a.id) ? "Actualizar" : "Puntuar"}</Boton>
+              </form>
+            )}
           </Card>
         ))}
 

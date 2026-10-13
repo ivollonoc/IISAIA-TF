@@ -6,6 +6,7 @@ import { ejecutar } from "@/lib/action";
 import { formatPesos } from "@/lib/format";
 import { requireClub } from "@/lib/session";
 import { anotarEnEspera, salirDeEspera, type RefEspera } from "@/modules/actividades/lista-espera.service";
+import { puntuar } from "@/modules/actividades/puntajes.service";
 import { claseSchema } from "@/modules/reservas/schema";
 import { cancelarReserva, reservar, reservarSerie } from "@/modules/reservas/service";
 import { cancelarInscripcionEvento, inscribirEvento } from "./eventos.service";
@@ -80,5 +81,15 @@ export async function salirEsperaAction(slug: string, tipo: "clase" | "evento", 
     const { club, user } = await requireClub(slug, "socio");
     await salirDeEspera(club.id, user.socioId!, ref(tipo, id, fecha, hora));
     return "Saliste de la lista de espera";
+  });
+}
+
+export async function puntuarAction(slug: string, actividadId: string, formData: FormData) {
+  await ejecutar(rutaActividadesSocio(slug), async () => {
+    const { club, user } = await requireClub(slug, "socio");
+    await puntuar(club.id, user.socioId!, {
+      actividadId, estrellas: formData.get("estrellas"), comentario: formData.get("comentario"),
+    });
+    return "¡Gracias por tu puntaje!";
   });
 }
