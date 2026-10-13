@@ -27,7 +27,12 @@ export default async function SociosPage({
 
   return (
     <>
-      <Titulo sub="Altas, modificaciones y estado de cuenta">Socios</Titulo>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Titulo sub="Altas, modificaciones y estado de cuenta">Socios</Titulo>
+        <Link href={`/c/${slug}/admin/socios/importar`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          Importar desde CSV
+        </Link>
+      </div>
       <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
