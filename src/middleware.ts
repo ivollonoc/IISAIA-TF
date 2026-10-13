@@ -1,7 +1,7 @@
 // Subdominio por club (solo con TENANT_MODE=subdomain): atlas.<ROOT_DOMAIN>/admin se reescribe a la
 // ruta interna /c/atlas/admin. Con TENANT_MODE=path (default) no hace nada.
 import { NextResponse, type NextRequest } from "next/server";
-import { decidirRuta } from "@/lib/tenant";
+import { decidirRuta, hostDelPedido } from "@/lib/tenant";
 
 export function middleware(req: NextRequest) {
   const root = process.env.ROOT_DOMAIN;
@@ -9,7 +9,7 @@ export function middleware(req: NextRequest) {
 
   // x-forwarded-host primero: lo pone el proxy (Vercel, next dev) y lo conserva el fetch interno con
   // el que Next renderiza el redirect de un Server Action.
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const host = hostDelPedido(req.headers.get("x-forwarded-host"), req.headers.get("host"), root);
   const decision = decidirRuta(host, req.nextUrl.pathname, root, {
     navegacion: req.headers.get("sec-fetch-mode") === "navigate",
   });

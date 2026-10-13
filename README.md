@@ -168,4 +168,5 @@ Abrir `http://demo.localhost:3000` (Chrome, Edge y Firefox resuelven `*.localhos
 2. **Vercel** → proyecto → Settings → Domains: agregar `clubdesocios.com.ar` (producción), `www.clubdesocios.com.ar` (redirige al anterior) y `*.clubdesocios.com.ar`. Con los nameservers de Vercel los registros (apex, `www` y comodín) se crean solos.
 3. **Vercel** → Settings → Environment Variables, solo en **Production**: `TENANT_MODE=subdomain`, `ROOT_DOMAIN=clubdesocios.com.ar` y `APP_URL=https://clubdesocios.com.ar`. Sin `NEXTAUTH_URL`: NextAuth toma el host de cada pedido. En Preview no se cargan, así que los previews siguen por `/c/<slug>`.
 4. Volver a desplegar: `TENANT_MODE` y `ROOT_DOMAIN` se leen al compilar.
+   Desde ese momento, en Production se entra solo por `clubdesocios.com.ar` y sus subdominios: en el alias `*.vercel.app` de producción la cookie de sesión (del dominio `.clubdesocios.com.ar`) no se guarda. Los previews no cambian.
 5. Opcional, para mails reales con Resend: verificar el dominio en Resend y cargar sus registros (SPF, DKIM) en Vercel → Domains → `clubdesocios.com.ar` → DNS Records.

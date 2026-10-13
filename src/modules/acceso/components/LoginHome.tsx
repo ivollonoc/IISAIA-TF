@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useActionState } from "react";
 import { Boton, Campo } from "@/components/ui";
+import { demosVisibles } from "@/lib/tenant";
 import { solicitarLinkAction, type EstadoLink } from "../actions";
 
 export const DEMOS = [
@@ -16,7 +17,7 @@ export const DEMOS = [
 
 /** Con `club`, el login es el de la página de ese club: solo sus usuarios y sus usuarios demo. */
 export function LoginHome({ demo, error, club }: { demo: boolean; error?: string; club?: string }) {
-  const demos = club ? DEMOS.filter((d) => d.club === club) : DEMOS;
+  const demos = demosVisibles(DEMOS, club);
   const [estado, pedirLink, enviando] = useActionState<EstadoLink, FormData>(solicitarLinkAction, { enviado: false });
 
   return (

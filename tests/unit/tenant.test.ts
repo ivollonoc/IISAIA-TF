@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decidirRuta, tenantDeHost, urlClub, urlRaiz, urlVisible } from "@/lib/tenant";
+import { decidirRuta, demosVisibles, hostDelPedido, tenantDeHost, urlClub, urlRaiz, urlVisible } from "@/lib/tenant";
 
 const ROOT = "clubdesocios.com.ar";
 const SUB = { modo: "subdomain", root: ROOT } as const;
@@ -92,5 +92,28 @@ describe("urlRaiz", () => {
     expect(urlRaiz("/admin", SUB)).toBe("https://clubdesocios.com.ar/admin");
     expect(urlRaiz("/", { modo: "subdomain", root: "localhost:3000" })).toBe("http://localhost:3000/");
     expect(urlRaiz("/admin", PATH)).toBe("/admin");
+  });
+});
+
+describe("hostDelPedido", () => {
+  it("usa el primer x-forwarded-host si es del dominio; si no, el host", () => {
+    expect(hostDelPedido("demo.clubdesocios.com.ar", "interno:3000", ROOT)).toBe("demo.clubdesocios.com.ar");
+    expect(hostDelPedido("demo.clubdesocios.com.ar, proxy.local", "x", ROOT)).toBe("demo.clubdesocios.com.ar");
+    expect(hostDelPedido("evil.com", "atlas.clubdesocios.com.ar", ROOT)).toBe("atlas.clubdesocios.com.ar");
+    expect(hostDelPedido(null, "atlas.clubdesocios.com.ar", ROOT)).toBe("atlas.clubdesocios.com.ar");
+  });
+});
+
+describe("demosVisibles", () => {
+  const demos = [{ club: null }, { club: "demo" }];
+  it("muestra los del club en su página y todos en la raíz", () => {
+    expect(demosVisibles(demos, "demo", SUB)).toEqual([{ club: "demo" }]);
+    expect(demosVisibles(demos, undefined, SUB)).toEqual(demos);
+    expect(demosVisibles(demos, undefined, { modo: "path", root: "" })).toEqual(demos);
+  });
+
+  it("con subdominios en localhost (sin cookie compartida), en la raíz solo el admin general", () => {
+    expect(demosVisibles(demos, undefined, { modo: "subdomain", root: "localhost:3000" })).toEqual([{ club: null }]);
+    expect(demosVisibles(demos, "demo", { modo: "subdomain", root: "localhost:3000" })).toEqual([{ club: "demo" }]);
   });
 });

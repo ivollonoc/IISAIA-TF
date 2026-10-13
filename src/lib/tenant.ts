@@ -69,3 +69,23 @@ export function decidirRuta(host: string | null, ruta: string, root: string, opc
   if (COMPARTIDAS.some((p) => ruta === p || ruta.startsWith(`${p}/`))) return { accion: "seguir" };
   return { accion: "reescribir", destino: ruta === "/" ? `/c/${tenant.slug}` : `/c/${tenant.slug}${ruta}` };
 }
+
+/**
+ * Host con el que se resuelve el club: el primer valor de x-forwarded-host (lo pone el proxy y lo
+ * conserva el fetch interno del redirect de un Server Action) si es del dominio; si no, `host`.
+ */
+export function hostDelPedido(forwarded: string | null, host: string | null, root: string): string | null {
+  const primero = forwarded?.split(",")[0].trim() ?? null;
+  return primero && tenantDeHost(primero, root).tipo !== "otro" ? primero : host;
+}
+
+/**
+ * Botones de demo del login: en la página de un club, los de ese club; en la raíz, todos. Con
+ * subdominios en localhost la sesión no se comparte entre subdominios, así que en la raíz solo
+ * queda el admin general (los de club entran desde su subdominio).
+ */
+export function demosVisibles<T extends { club: string | null }>(demos: T[], club: string | undefined, cfg: ConfigTenant = configTenant()): T[] {
+  if (club) return demos.filter((d) => d.club === club);
+  const sinCookieCompartida = cfg.modo === "subdomain" && cfg.root.startsWith("localhost");
+  return sinCookieCompartida ? demos.filter((d) => d.club === null) : demos;
+}
