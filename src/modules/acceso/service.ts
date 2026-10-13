@@ -2,12 +2,15 @@
 // al crear un club o un socio.
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
+import { configTenant, urlClub } from "@/lib/tenant";
 import { proveedores } from "@/modules/notificaciones/canales";
 import { consumirToken, crearToken } from "./tokens";
 
 /** Base de los links que van por mail (en local, una ruta relativa alcanza para la demo). */
 const urlBase = () => (process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? "").replace(/\/$/, "");
-const linkDe = (token: string) => `${urlBase()}/ingresar/${token}`;
+/** Con subdominios, el link de un usuario de club abre en su subdominio (ahí queda su sesión). */
+const linkDe = (token: string, clubSlug?: string | null) =>
+  clubSlug && configTenant().modo === "subdomain" ? urlClub(clubSlug, `/ingresar/${token}`) : `${urlBase()}/ingresar/${token}`;
 const normalizar = (email: string) => email.trim().toLowerCase();
 
 /**
@@ -16,10 +19,10 @@ const normalizar = (email: string) => email.trim().toLowerCase();
  * mostrarlo cuando el mail es simulado.
  */
 export async function solicitarLink(email: string, ahora: Date = new Date(), clubId?: string): Promise<{ link: string | null }> {
-  const usuario = await db.usuario.findUnique({ where: { email: normalizar(email) } });
+  const usuario = await db.usuario.findUnique({ where: { email: normalizar(email) }, include: { club: { select: { slug: true } } } });
   // Desde la página (o el subdominio) de un club, solo entran sus usuarios.
   if (!usuario || (clubId && usuario.clubId !== clubId)) return { link: null };
-  const link = linkDe(await crearToken(usuario.id, "LOGIN", ahora));
+  const link = linkDe(await crearToken(usuario.id, "LOGIN", ahora), usuario.club?.slug);
   await proveedores.email(
     usuario.clubId,
     usuario.email,
@@ -31,9 +34,9 @@ export async function solicitarLink(email: string, ahora: Date = new Date(), clu
 
 /** Invitación a activar la cuenta (vale 7 días): para el admin de un club nuevo o un socio con email. */
 export async function enviarInvitacion(usuarioId: string, ahora: Date = new Date()): Promise<string> {
-  const usuario = await db.usuario.findUnique({ where: { id: usuarioId }, include: { club: { select: { nombre: true } } } });
+  const usuario = await db.usuario.findUnique({ where: { id: usuarioId }, include: { club: { select: { nombre: true, slug: true } } } });
   if (!usuario) throw new DomainError("Usuario no encontrado");
-  const link = linkDe(await crearToken(usuario.id, "INVITACION", ahora));
+  const link = linkDe(await crearToken(usuario.id, "INVITACION", ahora), usuario.club?.slug);
   const club = usuario.club?.nombre ?? "Gestión de Socios";
   const asunto = usuario.rol === "ADMIN_CLUB" ? `Te invitaron a administrar ${club}` : `Te invitaron a ${club}`;
   await proveedores.email(

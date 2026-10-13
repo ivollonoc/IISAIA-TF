@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { autorizarDemo, autorizarLink, enviarInvitacion, solicitarLink } from "@/modules/acceso/service";
@@ -92,6 +92,25 @@ describe("invitaciones", () => {
     const link = await enviarInvitacion(u.id, ahora);
     expect(link).toMatch(/\/ingresar\/[\w-]+$/);
     expect((await db.mensajeSaliente.findFirstOrThrow()).cuerpo).toContain(link);
+  });
+});
+
+describe("links por mail con subdominios", () => {
+  it("los de un usuario de club van a su subdominio; los del admin general, al dominio raíz", async () => {
+    vi.stubEnv("TENANT_MODE", "subdomain");
+    vi.stubEnv("ROOT_DOMAIN", "clubdesocios.com.ar");
+    vi.stubEnv("APP_URL", "https://clubdesocios.com.ar");
+    try {
+      const club = await f.crearClub({ slug: "norte" });
+      await f.crearUsuario({ email: "ana@norte.com", clubId: club.id });
+      const socio = await f.crearUsuario({ email: "beto@norte.com", rol: "SOCIO", clubId: club.id });
+      await f.crearUsuario({ email: "jefe@plataforma.com", rol: "SUPERADMIN" });
+      expect((await solicitarLink("ana@norte.com", ahora)).link).toMatch(/^https:\/\/norte\.clubdesocios\.com\.ar\/ingresar\/[\w-]+$/);
+      expect(await enviarInvitacion(socio.id, ahora)).toMatch(/^https:\/\/norte\.clubdesocios\.com\.ar\/ingresar\/[\w-]+$/);
+      expect((await solicitarLink("jefe@plataforma.com", ahora)).link).toMatch(/^https:\/\/clubdesocios\.com\.ar\/ingresar\/[\w-]+$/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
