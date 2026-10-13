@@ -79,6 +79,7 @@ model Usuario {
   email     String   @unique
   nombre    String?
   rol       Rol
+  demo      Boolean  @default(false) // entra sin contraseña (solo con DEMO_LOGIN)
   clubId    String?
   club      Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
   socio     Socio?
@@ -86,6 +87,7 @@ model Usuario {
 
   notificaciones Notificacion[]
   avisosEnviados AvisoEnviado[]
+  tokens         TokenAcceso[]
 
   @@index([clubId])
 }
@@ -386,4 +388,19 @@ model AvisoEnviado {
   createdAt     DateTime     @default(now())
 
   @@index([origen, clubId, createdAt])
+}
+
+// Links de un solo uso para entrar sin contraseña: invitación (7 días) o login (15 minutos).
+// Solo se guarda el hash; el token viaja únicamente en el link.
+model TokenAcceso {
+  id        String    @id @default(cuid())
+  usuarioId String
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  hash      String    @unique
+  tipo      String // "LOGIN" | "INVITACION"
+  expira    DateTime
+  usadoAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([usuarioId])
 }

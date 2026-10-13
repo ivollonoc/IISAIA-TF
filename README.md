@@ -20,7 +20,7 @@ Los tres roles tienen una **bandeja de avisos** (campana en el encabezado y fran
 
 ### Avisos por mail y SMS (simulados)
 
-Los mails y SMS quedan en el **buzón de salida** (pestaña Avisos del club y `/admin/avisos`). Con `RESEND_API_KEY` y `EMAIL_FROM` los mails salen de verdad por [Resend](https://resend.com); los SMS siempre son simulados.
+Los mails y SMS se registran en la base (`MensajeSaliente`) pero no se muestran a nadie: los admins solo ven el historial de sus avisos manuales, nunca los mensajes individuales. Con `RESEND_API_KEY` y `EMAIL_FROM` los mails salen de verdad por [Resend](https://resend.com); los SMS siempre son simulados.
 
 ### Pagos online (simulados)
 
@@ -28,7 +28,7 @@ El checkout usa la pasarela configurada en `PASARELA` (por defecto `simulada`). 
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · NextAuth (JWT, Google + login demo) · Prisma · PostgreSQL · Zod · Vitest
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · NextAuth (JWT, link mágico por mail + login demo) · Prisma · PostgreSQL · Zod · Vitest
 
 ## Estructura
 
@@ -86,6 +86,10 @@ El esquema se versiona con `prisma migrate` (carpeta `prisma/migrations`).
 - `npm run db:deploy` aplica las migraciones pendientes (CI, contenedores, producción).
 - Si tu base local fue creada con el antiguo `db push`, `db:deploy` falla con P3005: recreala con `npx prisma migrate reset` y `npm run db:seed` (con Docker: `docker compose down -v` y volver a levantar).
 
+### Ingreso
+
+Sin contraseñas: en la página principal se ingresa el email y llega un **link mágico** (15 minutos, un solo uso). Al crear un club, su admin recibe una **invitación** por mail (7 días); lo mismo un socio dado de alta con email (el admin puede reenviarla desde su ficha). Con mails simulados y `DEMO_LOGIN=true`, el link se muestra en pantalla para poder seguir la demo.
+
 ### Usuarios demo (con `DEMO_LOGIN=true`)
 
 | Email | Rol |
@@ -124,7 +128,7 @@ El CI de GitHub Actions corre typecheck, tests y build en cada push.
 ## Deploy (Vercel + Neon)
 
 1. Crear una base Postgres en [Neon](https://neon.tech) y copiar dos connection strings: la **con pooler** (host con `-pooler`) para `DATABASE_URL` y la **directa** para `DIRECT_URL`.
-2. Importar el repo en Vercel y cargar las variables de `.env.example` (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `SUPERADMIN_EMAIL`, Google opcional).
+2. Importar el repo en Vercel y cargar las variables de `.env.example` (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `APP_URL`, `DEMO_LOGIN`; `RESEND_API_KEY` y `EMAIL_FROM` para mails reales).
 3. Aplicar migraciones y datos demo desde una máquina con acceso a la base, pasando la URL **directa en línea** (nunca en `.env`, que apunta siempre a localhost):
 
    ```bash
@@ -144,4 +148,4 @@ DATABASE_URL="<neon-directa>" DIRECT_URL="<neon-directa>" npx prisma migrate sta
 
 Opcional: crear antes un branch en Neon como respaldo.
 
-> `DEMO_LOGIN` permite entrar sin contraseña: usarlo solo para demos.
+> `DEMO_LOGIN` permite entrar sin contraseña a los usuarios demo: usarlo solo para demos.

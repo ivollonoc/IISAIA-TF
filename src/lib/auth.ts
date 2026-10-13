@@ -1,37 +1,31 @@
-// Configuración de NextAuth: sesión JWT con rol y club como claims.
+// Configuración de NextAuth: sesión JWT con rol y club como claims. Se entra sin contraseña:
+// los usuarios demo directamente (solo con DEMO_LOGIN) y el resto con un link mágico por mail.
 import type { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { autorizarDemo, autorizarLink } from "@/modules/acceso/service";
 import { db } from "./db";
 import type { Rol } from "./permisos";
 
-export const googleHabilitado = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 export const demoHabilitado = process.env.DEMO_LOGIN === "true";
 
-const providers: NextAuthOptions["providers"] = [];
-
-if (googleHabilitado) {
-  providers.push(
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  );
-}
+const providers: NextAuthOptions["providers"] = [
+  // Link mágico o invitación: el token del link es la credencial (un solo uso).
+  CredentialsProvider({
+    id: "link",
+    name: "Link",
+    credentials: { token: { label: "Token", type: "text" } },
+    authorize: (credentials) => (credentials?.token ? autorizarLink(credentials.token) : null),
+  }),
+];
 
 if (demoHabilitado) {
-  // Login sin contraseña para demos: solo acepta emails ya registrados.
+  // Login sin contraseña para demos: solo usuarios marcados como demo.
   providers.push(
     CredentialsProvider({
       id: "demo",
       name: "Demo",
       credentials: { email: { label: "Email", type: "email" } },
-      async authorize(credentials) {
-        const email = credentials?.email?.trim().toLowerCase();
-        if (!email) return null;
-        const u = await db.usuario.findUnique({ where: { email } });
-        return u ? { id: u.id, email: u.email, name: u.nombre } : null;
-      },
+      authorize: (credentials) => (credentials?.email ? autorizarDemo(credentials.email) : null),
     }),
   );
 }
@@ -39,23 +33,8 @@ if (demoHabilitado) {
 export const authOptions: NextAuthOptions = {
   providers,
   session: { strategy: "jwt" },
-  pages: { signIn: "/login", error: "/login" },
+  pages: { signIn: "/", error: "/" },
   callbacks: {
-    // Solo entran emails dados de alta por un admin (o el SUPERADMIN configurado).
-    async signIn({ user }) {
-      const email = user.email?.toLowerCase();
-      if (!email) return false;
-      if (email === process.env.SUPERADMIN_EMAIL?.toLowerCase()) {
-        await db.usuario.upsert({
-          where: { email },
-          update: { rol: "SUPERADMIN", clubId: null },
-          create: { email, nombre: user.name, rol: "SUPERADMIN" },
-        });
-        return true;
-      }
-      return (await db.usuario.count({ where: { email } })) > 0;
-    },
-
     // En el primer login cargamos rol/club desde la base y quedan en el token.
     async jwt({ token, user }) {
       if (user?.email) {

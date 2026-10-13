@@ -1,6 +1,7 @@
 // Gestión de clubes (solo SUPERADMIN).
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
+import { invitarSinFallar } from "@/modules/acceso/service";
 import { canalesSchema, clubSchema, configClubSchema } from "./schema";
 
 export function listarClubs() {
@@ -13,11 +14,11 @@ export function listarClubs() {
   });
 }
 
-/** Crea el club y da de alta (o reasigna) a su usuario administrador. */
+/** Crea el club, da de alta (o reasigna) a su usuario administrador y le manda la invitación. */
 export async function crearClub(input: unknown) {
   const data = clubSchema.parse(input);
 
-  return db.$transaction(async (tx) => {
+  const { club, adminId } = await db.$transaction(async (tx) => {
     const existente = await tx.usuario.findUnique({ where: { email: data.adminEmail } });
     if (existente && existente.rol !== "ADMIN_CLUB") {
       throw new DomainError("Ese email ya está en uso por otro tipo de usuario");
@@ -25,13 +26,15 @@ export async function crearClub(input: unknown) {
     if (existente?.clubId) throw new DomainError("Ese email ya administra otro club");
 
     const club = await tx.club.create({ data: { nombre: data.nombre, slug: data.slug } });
-    await tx.usuario.upsert({
+    const admin = await tx.usuario.upsert({
       where: { email: data.adminEmail },
       update: { clubId: club.id },
       create: { email: data.adminEmail, rol: "ADMIN_CLUB", clubId: club.id },
     });
-    return club;
+    return { club, adminId: admin.id };
   });
+  await invitarSinFallar(adminId);
+  return club;
 }
 
 /** Día de vencimiento de las cuotas del club (1..28). Aplica a los cargos que se generen desde ahora. */

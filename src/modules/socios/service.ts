@@ -2,6 +2,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
+import { invitarSinFallar } from "@/modules/acceso/service";
 import { socioSchema, type SocioInput } from "./schema";
 
 export function listarSocios(clubId: string) {
@@ -47,7 +48,7 @@ async function vincularUsuario(tx: Prisma.TransactionClient, clubId: string, ema
 export async function crearSocio(clubId: string, input: unknown) {
   const data: SocioInput = socioSchema.parse(input);
 
-  return db.$transaction(async (tx) => {
+  const socio = await db.$transaction(async (tx) => {
     await validarTipo(tx, clubId, data.tipoSocioId);
     const ultimo = await tx.socio.aggregate({ where: { clubId }, _max: { nroSocio: true } });
     const usuarioId = await vincularUsuario(tx, clubId, data.email);
@@ -55,18 +56,24 @@ export async function crearSocio(clubId: string, input: unknown) {
       data: { ...data, clubId, usuarioId, nroSocio: (ultimo._max.nroSocio ?? 0) + 1 },
     });
   });
+  // Con email, el socio recibe la invitación para entrar a la autogestión.
+  if (socio.usuarioId) await invitarSinFallar(socio.usuarioId);
+  return socio;
 }
 
 export async function actualizarSocio(clubId: string, socioId: string, input: unknown) {
   const data: SocioInput = socioSchema.parse(input);
 
-  return db.$transaction(async (tx) => {
+  const { socio, emailNuevo } = await db.$transaction(async (tx) => {
     const actual = await tx.socio.findFirst({ where: { id: socioId, clubId } });
     if (!actual) throw new DomainError("Socio no encontrado");
     await validarTipo(tx, clubId, data.tipoSocioId);
     const usuarioId = data.email === actual.email ? actual.usuarioId : await vincularUsuario(tx, clubId, data.email);
-    return tx.socio.update({ where: { id: socioId }, data: { ...data, usuarioId } });
+    const socio = await tx.socio.update({ where: { id: socioId }, data: { ...data, usuarioId } });
+    return { socio, emailNuevo: Boolean(data.email) && data.email !== actual.email };
   });
+  if (emailNuevo && socio.usuarioId) await invitarSinFallar(socio.usuarioId);
+  return socio;
 }
 
 /** Baja/alta lógica: la cuenta corriente se conserva. */

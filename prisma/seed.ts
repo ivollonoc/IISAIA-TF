@@ -21,20 +21,20 @@ async function main() {
   const fechas = fechasDemo(escenarioDemo());
 
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
-  await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });
+  await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN", demo: true } });
 
   const club = await prisma.club.create({
     data: { nombre: "Club Atlético Demo", slug: "demo", diaVencimiento, canales: ["IN_APP", "EMAIL"] },
   });
   const admin = await prisma.usuario.create({
-    data: { email: "admin@demo.club", nombre: "Admin Demo", rol: "ADMIN_CLUB", clubId: club.id },
+    data: { email: "admin@demo.club", nombre: "Admin Demo", rol: "ADMIN_CLUB", clubId: club.id, demo: true },
   });
 
   const activo = await prisma.tipoSocio.create({ data: { clubId: club.id, nombre: "Activo", cuotaMensual: 15000 } });
   const cadete = await prisma.tipoSocio.create({ data: { clubId: club.id, nombre: "Cadete", cuotaMensual: 8000 } });
 
   const socioUser = await prisma.usuario.create({
-    data: { email: "socio@demo.club", nombre: "Lucía Gómez", rol: "SOCIO", clubId: club.id },
+    data: { email: "socio@demo.club", nombre: "Lucía Gómez", rol: "SOCIO", clubId: club.id, demo: true },
   });
 
   const base = [

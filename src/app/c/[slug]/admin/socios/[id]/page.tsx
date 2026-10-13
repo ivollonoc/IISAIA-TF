@@ -10,6 +10,7 @@ import { Aviso, Badge, Boton, Campo, Card, Selector, Titulo, type SearchParams }
 import { anularCargoAction, registrarPagoAction } from "@/modules/cuenta-corriente/actions";
 import { MovimientosTabla } from "@/modules/cuenta-corriente/components/MovimientosTabla";
 import { actualizarSocioAction, cambiarEstadoSocioAction } from "@/modules/socios/actions";
+import { reenviarInvitacionAction } from "@/modules/acceso/actions";
 import { SocioForm } from "@/modules/socios/components/SocioForm";
 
 export default async function SocioDetallePage({
@@ -41,6 +42,13 @@ export default async function SocioDetallePage({
               {socio.activo ? "Dar de baja" : "Reactivar"}
             </Boton>
           </form>
+          {socio.usuarioId && (
+            <form action={reenviarInvitacionAction.bind(null, slug, socio.id)} className="mt-2">
+              <Boton variante="secundario" className="w-full">
+                Reenviar invitación por mail
+              </Boton>
+            </form>
+          )}
         </Card>
 
         <div className="flex flex-col gap-6 lg:col-span-2">
