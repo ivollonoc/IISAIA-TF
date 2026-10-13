@@ -7,6 +7,7 @@ import { parsearDia, semanaDe, semanasDelMes } from "@/modules/calendario/reglas
 import { calendarioSocio } from "@/modules/calendario/service";
 import { vistaDeParams } from "@/modules/calendario/vista";
 import { Card, Titulo } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 export default async function CalendarioSocioPage({
   params,
@@ -21,7 +22,7 @@ export default async function CalendarioSocioPage({
   const ahora = new Date();
   const hoy = inicioDelDia(ahora);
   const v = vistaDeParams({ ...sp, vista: sp.vista === "mes" ? "mes" : "semana" }, ahora);
-  const base = `/c/${slug}/socio/calendario`;
+  const base = urlClub(slug, "/socio/calendario");
 
   const dias = semanaDe(parsearDia(v.semana)!);
   const semanas = semanasDelMes(v.mes);

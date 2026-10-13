@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { urlClub } from "@/lib/tenant";
 
 // Actividades y calendario se unificaron en la Agenda (vista Mes).
 export default async function CalendarioAdminPage({
@@ -10,5 +11,5 @@ export default async function CalendarioAdminPage({
 }) {
   const { slug } = await params;
   const { mes } = await searchParams;
-  redirect(`/c/${slug}/admin/agenda?vista=mes${mes ? `&mes=${encodeURIComponent(mes)}` : ""}`);
+  redirect(urlClub(slug, `/admin/agenda?vista=mes${mes ? `&mes=${encodeURIComponent(mes)}` : ""}`));
 }

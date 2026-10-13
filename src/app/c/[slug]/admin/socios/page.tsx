@@ -8,6 +8,7 @@ import { formatPesos } from "@/lib/format";
 import { Aviso, Badge, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearSocioAction } from "@/modules/socios/actions";
 import { SocioForm } from "@/modules/socios/components/SocioForm";
+import { urlClub } from "@/lib/tenant";
 
 export default async function SociosPage({
   params,
@@ -29,7 +30,7 @@ export default async function SociosPage({
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <Titulo sub="Altas, modificaciones y estado de cuenta">Socios</Titulo>
-        <Link href={`/c/${slug}/admin/socios/importar`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <Link href={urlClub(slug, "/admin/socios/importar")} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
           Importar desde CSV
         </Link>
       </div>
@@ -42,7 +43,7 @@ export default async function SociosPage({
                 <tr key={s.id} className={s.activo ? "" : "opacity-50"}>
                   <td className="py-2 pr-4">{s.nroSocio}</td>
                   <td className="py-2 pr-4">
-                    <Link href={`/c/${slug}/admin/socios/${s.id}`} className="font-medium text-emerald-700 underline">
+                    <Link href={urlClub(slug, `/admin/socios/${s.id}`)} className="font-medium text-emerald-700 underline">
                       {s.apellido}, {s.nombre}
                     </Link>
                   </td>
@@ -62,7 +63,7 @@ export default async function SociosPage({
           {tipos.length === 0 ? (
             <p className="text-sm text-slate-500">
               Primero creá un{" "}
-              <Link href={`/c/${slug}/admin/tipos`} className="text-emerald-700 underline">
+              <Link href={urlClub(slug, "/admin/tipos")} className="text-emerald-700 underline">
                 tipo de socio
               </Link>
               .

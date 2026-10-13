@@ -13,6 +13,7 @@ import { claseSchema } from "@/modules/reservas/schema";
 import { cancelarReserva, reservar, reservarSerie } from "@/modules/reservas/service";
 import { cancelarInscripcionEvento, inscribirEvento } from "./eventos.service";
 import { COOKIE_ORDEN_ACTIVIDADES, ordenActividades, rutaActividadesSocio } from "./vista";
+import { urlVisible } from "@/lib/tenant";
 
 const conCargo = (texto: string, cargo: { monto: number } | null) =>
   cargo ? `${texto}. Se agregó el cargo de ${formatPesos(cargo.monto)} a tu cuenta` : texto;
@@ -100,5 +101,5 @@ export async function puntuarAction(slug: string, actividadId: string, formData:
 export async function ordenarActividadesAction(slug: string, orden: string) {
   await requireClub(slug, "socio");
   (await cookies()).set(COOKIE_ORDEN_ACTIVIDADES, ordenActividades(orden), { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-  redirect(rutaActividadesSocio(slug));
+  redirect(urlVisible(rutaActividadesSocio(slug)));
 }

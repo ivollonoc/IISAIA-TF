@@ -45,4 +45,18 @@ describe("ejecutar", () => {
       /^REDIRECT:\/cal\?mes=2026-10&ok=Listo&f=[\w-]+$/,
     );
   });
+
+  it("en modo subdominio redirige a la URL limpia del club y revalida la ruta interna", async () => {
+    vi.stubEnv("TENANT_MODE", "subdomain");
+    vi.stubEnv("ROOT_DOMAIN", "clubdesocios.com.ar");
+    try {
+      const { revalidatePath } = await import("next/cache");
+      await expect(ejecutar("/c/demo/admin/socios", async () => "Listo")).rejects.toThrow(
+        /^REDIRECT:https:\/\/demo\.clubdesocios\.com\.ar\/admin\/socios\?ok=Listo&f=[\w-]+$/,
+      );
+      expect(revalidatePath).toHaveBeenLastCalledWith("/c/demo/admin/socios");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

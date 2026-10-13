@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Boton, Tabla } from "@/components/ui";
 import { importarSociosAction, type EstadoImportacion } from "../actions";
+import { urlClub } from "@/lib/tenant";
 
 const COLUMNAS = ["nombre", "apellido", "dni", "email", "telefono", "tipo"];
 
@@ -16,7 +17,7 @@ export function ImportarSocios({ slug }: { slug: string }) {
     return (
       <div className="flex flex-col gap-3 text-sm">
         <p className="rounded-lg bg-emerald-50 px-4 py-2 text-emerald-800">{estado.ok}</p>
-        <Link href={`/c/${slug}/admin/socios`} className="text-emerald-700 underline">
+        <Link href={urlClub(slug, "/admin/socios")} className="text-emerald-700 underline">
           Ver socios
         </Link>
       </div>

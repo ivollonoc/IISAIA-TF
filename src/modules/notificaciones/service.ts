@@ -5,6 +5,7 @@ import { canalesActivos } from "./canales";
 import { adminsDeClub, audiencia } from "./destinatarios";
 import { notificar, notificarAdmins } from "./emitir";
 import { avisoClubSchema, avisoPlataformaSchema } from "./schema";
+import { urlVisible } from "@/lib/tenant";
 
 export function listarNotificaciones(usuarioId: string, limite = 50) {
   return db.notificacion.findMany({ where: { usuarioId }, orderBy: { createdAt: "desc" }, take: limite });
@@ -18,8 +19,8 @@ export function ultimasNoLeidas(usuarioId: string, n = 3) {
   return db.notificacion.findMany({ where: { usuarioId, leidaAt: null }, orderBy: { createdAt: "desc" }, take: n });
 }
 
-/** Solo rutas internas ("/c/…"): nunca "//otro.com" ni URLs absolutas. */
-const linkInterno = (link: string | null) => (link && /^\/(?!\/)/.test(link) ? link : null);
+/** Solo rutas internas ("/c/…"): nunca "//otro.com" ni URLs absolutas. Devuelve la URL que ve el usuario. */
+const linkInterno = (link: string | null) => (link && /^\/(?!\/)/.test(link) ? urlVisible(link) : null);
 
 /** Marca leída una notificación propia y devuelve su link interno (o null). */
 export async function marcarLeida(usuarioId: string, id: string): Promise<string | null> {

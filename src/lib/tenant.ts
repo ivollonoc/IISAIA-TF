@@ -39,6 +39,11 @@ export function urlClub(slug: string, ruta: string, cfg: ConfigTenant = configTe
   return `${protocolo(cfg.root)}://${slug}.${cfg.root}${ruta.startsWith("/") ? ruta : `/${ruta}`}`;
 }
 
+/** URL de una ruta del dominio raíz (p. ej. el panel del admin general), absoluta con subdominios. */
+export function urlRaiz(ruta: string, cfg: ConfigTenant = configTenant()): string {
+  return cfg.modo === "path" ? ruta : `${protocolo(cfg.root)}://${cfg.root}${ruta}`;
+}
+
 /** Traduce una ruta interna (/c/<slug>/…) a la que ve el usuario; las demás quedan igual. */
 export function urlVisible(ruta: string, cfg: ConfigTenant = configTenant()): string {
   const deClub = RUTA_CLUB.exec(ruta);

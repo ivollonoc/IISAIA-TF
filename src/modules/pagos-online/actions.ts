@@ -8,6 +8,7 @@ import { queryAviso } from "@/lib/aviso";
 import { mensajeDeError } from "@/lib/errors";
 import { requireClub } from "@/lib/session";
 import { pagarOnline } from "./checkout.service";
+import { urlVisible } from "@/lib/tenant";
 
 export async function pagarAction(slug: string, cargoIds: string[], formData: FormData) {
   const { club, user } = await requireClub(slug, "socio");
@@ -31,5 +32,5 @@ export async function pagarAction(slug: string, cargoIds: string[], formData: Fo
     destino = `${checkout}&${queryAviso("error", msg)}`;
   }
   revalidatePath(cuenta);
-  redirect(destino);
+  redirect(urlVisible(destino));
 }

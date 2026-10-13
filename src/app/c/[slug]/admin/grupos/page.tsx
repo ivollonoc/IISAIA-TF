@@ -5,6 +5,7 @@ import { agregarAlGrupoAction, quitarDelGrupoAction } from "@/modules/socios/act
 import { resumenGrupos } from "@/modules/socios/grupos.service";
 import { listarSocios } from "@/modules/socios/service";
 import { Aviso, Boton, Card, Selector, Stat, Titulo, type SearchParams } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 const nombre = (s: { nombre: string; apellido: string; nroSocio: number }) => `${s.nombre} ${s.apellido} (N° ${s.nroSocio})`;
 
@@ -43,7 +44,7 @@ export default async function GruposPage({
                 {resumen.lista.map((g) => (
                   <li key={g.titular.id} className="py-3 text-sm">
                     <p>
-                      <Link href={`/c/${slug}/admin/socios/${g.titular.id}`} className="font-semibold text-slate-800 hover:underline">
+                      <Link href={urlClub(slug, `/admin/socios/${g.titular.id}`)} className="font-semibold text-slate-800 hover:underline">
                         {nombre(g.titular)}
                       </Link>{" "}
                       <span className="text-xs text-emerald-700">titular · {1 + g.familiares.length} integrantes</span>
@@ -51,7 +52,7 @@ export default async function GruposPage({
                     <ul className="mt-1 flex flex-col gap-1 pl-4">
                       {g.familiares.map((f) => (
                         <li key={f.id} className="flex items-center justify-between gap-3">
-                          <Link href={`/c/${slug}/admin/socios/${f.id}`} className="text-slate-600 hover:underline">
+                          <Link href={urlClub(slug, `/admin/socios/${f.id}`)} className="text-slate-600 hover:underline">
                             {nombre(f)}
                           </Link>
                           <form action={quitarDelGrupoAction.bind(null, slug, f.id)}>

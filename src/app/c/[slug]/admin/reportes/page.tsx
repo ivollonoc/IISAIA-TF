@@ -4,6 +4,7 @@ import { formatPesos } from "@/lib/format";
 import { reporteClub } from "@/modules/reportes/service";
 import { GraficoBarras } from "@/components/graficos";
 import { Card, Stat, Tabla, Titulo } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 const VERDE = "#047857";
 const GRIS = "#94a3b8";
@@ -23,7 +24,7 @@ export default async function ReportesClubPage({
   const { club } = await requireClub(slug, "admin");
   const meses = (await searchParams).meses === "12" ? 12 : 6;
   const r = await reporteClub(club.id, meses);
-  const base = `/c/${slug}/admin/reportes`;
+  const base = urlClub(slug, "/admin/reportes");
 
   return (
     <>
@@ -116,7 +117,7 @@ export default async function ReportesClubPage({
                 {r.morosos.map((m) => (
                   <tr key={m.socioId}>
                     <td className="py-2 pr-4">
-                      <Link href={`/c/${slug}/admin/socios/${m.socioId}`} className="text-emerald-700 hover:underline">
+                      <Link href={urlClub(slug, `/admin/socios/${m.socioId}`)} className="text-emerald-700 hover:underline">
                         {m.apellido}, {m.nombre}
                       </Link>
                     </td>

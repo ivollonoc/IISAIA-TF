@@ -11,6 +11,7 @@ import { MovimientosTabla } from "@/modules/cuenta-corriente/components/Movimien
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
 import { AgendaLista } from "@/modules/calendario/components/AgendaLista";
 import { calendarioSocio } from "@/modules/calendario/service";
+import { urlClub } from "@/lib/tenant";
 
 export default async function SocioHomePage({
   params,
@@ -55,14 +56,14 @@ export default async function SocioHomePage({
             </p>
           ) : socio._count.familiares > 0 ? (
             <Link
-              href={`/c/${slug}/socio/pagos`}
+              href={urlClub(slug, "/socio/pagos")}
               className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
             >
               Pagar los cargos del grupo
             </Link>
           ) : cuenta.pendientes.length > 0 && (
             <Link
-              href={`/c/${slug}/socio/pagar?${cuenta.pendientes.map((c) => `cargos=${c.id}`).join("&")}`}
+              href={urlClub(slug, `/socio/pagar?${cuenta.pendientes.map((c) => `cargos=${c.id}`).join("&")}`)}
               className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
             >
               Pagar {formatPesos(cuenta.deuda)}
@@ -74,10 +75,10 @@ export default async function SocioHomePage({
         <div className="lg:col-span-2">
           <Card title="Próximos 7 días">
             <AgendaLista items={agenda} vacio="No tenés clases reservadas ni eventos en los próximos 7 días." />
-            <Link href={`/c/${slug}/socio/calendario`} className="mt-4 inline-block text-sm text-emerald-700 underline">
+            <Link href={urlClub(slug, "/socio/calendario")} className="mt-4 inline-block text-sm text-emerald-700 underline">
               Ver calendario
             </Link>{" "}
-            <Link href={`/c/${slug}/socio/actividades`} className="mt-4 ml-3 inline-block text-sm text-emerald-700 underline">
+            <Link href={urlClub(slug, "/socio/actividades")} className="mt-4 ml-3 inline-block text-sm text-emerald-700 underline">
               Reservar clases
             </Link>
           </Card>
@@ -85,7 +86,7 @@ export default async function SocioHomePage({
 
         <div className="lg:col-span-3">
           <Card title="Cuenta corriente">
-            <form action={`/c/${slug}/socio/pagar`} method="get" className="flex flex-col gap-4">
+            <form action={urlClub(slug, "/socio/pagar")} method="get" className="flex flex-col gap-4">
               <MovimientosTabla movimientos={cuenta.movimientos} seleccion={socio.titular ? undefined : "cargos"} />
               {cuenta.pendientes.length > 0 && !socio.titular && (
                 <div>

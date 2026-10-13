@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { requireClub } from "@/lib/session";
 import { Tabs } from "@/components/Tabs";
+import { urlClub } from "@/lib/tenant";
 
 export default async function AdminClubLayout({
   children,
@@ -11,7 +12,7 @@ export default async function AdminClubLayout({
 }) {
   const { slug } = await params;
   const { club } = await requireClub(slug, "admin");
-  const base = `/c/${slug}/admin`;
+  const base = urlClub(slug, "/admin");
 
   return (
     <>

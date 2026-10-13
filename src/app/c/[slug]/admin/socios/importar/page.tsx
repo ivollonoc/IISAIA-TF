@@ -3,6 +3,7 @@ import { requireClub } from "@/lib/session";
 import { listarTipos } from "@/modules/cuotas/tipos.service";
 import { ImportarSocios } from "@/modules/socios/components/ImportarSocios";
 import { Card, Titulo } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 export default async function ImportarSociosPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -11,7 +12,7 @@ export default async function ImportarSociosPage({ params }: { params: Promise<{
 
   return (
     <>
-      <Link href={`/c/${slug}/admin/socios`} className="mb-2 inline-block text-sm text-emerald-700 underline">
+      <Link href={urlClub(slug, "/admin/socios")} className="mb-2 inline-block text-sm text-emerald-700 underline">
         ← Volver a socios
       </Link>
       <Titulo sub="Alta masiva desde una planilla (por ejemplo, exportada de Excel como CSV)">Importar socios</Titulo>

@@ -8,6 +8,7 @@ import { prepararCheckout } from "@/modules/pagos-online/checkout.service";
 import { pagarAction } from "@/modules/pagos-online/actions";
 import { parsearCargos } from "@/modules/pagos-online/schema";
 import { TARJETAS_DE_PRUEBA } from "@/modules/pagos-online/simulada";
+import { urlClub } from "@/lib/tenant";
 
 export default async function PagarPage({
   params,
@@ -76,7 +77,7 @@ export default async function PagarPage({
           </Card>
         </div>
       ) : (
-        <Link href={`/c/${slug}/socio`} className="text-emerald-700 underline">
+        <Link href={urlClub(slug, "/socio")} className="text-emerald-700 underline">
           Volver a mi cuenta
         </Link>
       )}

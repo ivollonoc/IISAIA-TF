@@ -2,12 +2,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { queryAviso } from "./aviso";
 import { mensajeDeError } from "./errors";
+import { urlVisible } from "./tenant";
 
 /**
  * Envuelve un Server Action: ejecuta, revalida y vuelve a `ruta` con ?ok=<mensaje> (o ?ok=1 si la
  * acción no devuelve un texto) o ?error=<mensaje>, firmados (ver aviso.ts). Errores inesperados
  * (y los redirect de los guards) se relanzan. Con `rutaError`, los errores vuelven ahí (p. ej. para
- * mantener abierta la selección del formulario que falló).
+ * mantener abierta la selección del formulario que falló). `ruta` es la interna (/c/<slug>/…): se
+ * revalida tal cual y se redirige a la que ve el usuario (con subdominios, la URL limpia).
  */
 export async function ejecutar(ruta: string, fn: () => Promise<unknown>, rutaError: string = ruta): Promise<never> {
   let error: string | null = null;
@@ -22,7 +24,7 @@ export async function ejecutar(ruta: string, fn: () => Promise<unknown>, rutaErr
   revalidatePath(ruta.split("?")[0]);
   const destino = error ? rutaError : ruta;
   const separador = destino.includes("?") ? "&" : "?";
-  redirect(`${destino}${separador}${error ? queryAviso("error", error) : queryAviso("ok", ok)}`);
+  redirect(urlVisible(`${destino}${separador}${error ? queryAviso("error", error) : queryAviso("ok", ok)}`));
 }
 
 /** Ruta base del área de administración de un club. */

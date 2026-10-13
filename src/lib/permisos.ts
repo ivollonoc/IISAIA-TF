@@ -1,4 +1,5 @@
 // Reglas de acceso puras (sin I/O) para poder testearlas aisladas.
+import { urlClub, urlRaiz } from "./tenant";
 
 export type Rol = "SUPERADMIN" | "ADMIN_CLUB" | "SOCIO";
 
@@ -24,8 +25,8 @@ export function puedeAcceder(user: UsuarioSesion, clubId: string, area: AreaClub
 
 /** Pantalla de inicio según el rol. */
 export function homePath(user: UsuarioSesion): string {
-  if (user.rol === "SUPERADMIN") return "/admin";
+  if (user.rol === "SUPERADMIN") return urlRaiz("/admin");
   if (!user.clubSlug) return "/sin-acceso";
-  if (user.rol === "ADMIN_CLUB") return `/c/${user.clubSlug}/admin`;
-  return user.socioId ? `/c/${user.clubSlug}/socio` : "/sin-acceso";
+  if (user.rol === "ADMIN_CLUB") return urlClub(user.clubSlug, "/admin");
+  return user.socioId ? urlClub(user.clubSlug, "/socio") : "/sin-acceso";
 }

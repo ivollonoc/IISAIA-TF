@@ -4,6 +4,7 @@ import { requireSuperadmin } from "@/lib/session";
 import { listarClubs } from "@/modules/clubs/service";
 import { Aviso, Boton, Campo, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearClubAction } from "@/modules/clubs/actions";
+import { urlClub } from "@/lib/tenant";
 
 /** Clubes afiliados: sin información financiera (cada club administra la suya). */
 export default async function AdminGeneralPage({ searchParams }: { searchParams: SearchParams }) {
@@ -22,7 +23,7 @@ export default async function AdminGeneralPage({ searchParams }: { searchParams:
                 <tr key={c.id}>
                   <td className="py-2 pr-4 font-medium">{c.nombre}</td>
                   <td className="py-2 pr-4">
-                    <Link href={`/c/${c.slug}/admin`} className="text-emerald-700 underline">
+                    <Link href={urlClub(c.slug, "/admin")} className="text-emerald-700 underline">
                       /c/{c.slug}
                     </Link>
                   </td>

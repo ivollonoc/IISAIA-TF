@@ -24,6 +24,7 @@ import { hrefAgenda, vistaDeParams } from "@/modules/calendario/vista";
 import { clasesParaSocio, esperaDeClase, reservasDeClase } from "@/modules/reservas/service";
 import { puntajesDeActividad } from "@/modules/actividades/puntajes.service";
 import { Aviso, Boton, Card, Tabla, Titulo } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 type Params = {
   vista?: string;
@@ -55,7 +56,7 @@ export default async function AgendaAdminPage({
   const ahora = new Date();
   const hoy = inicioDelDia(ahora);
   const v = vistaDeParams(sp, ahora);
-  const base = `/c/${slug}/admin/agenda`;
+  const base = urlClub(slug, "/admin/agenda");
   const volver = `vista=${v.vista}&semana=${v.semana}&mes=${v.mes}`;
   const href = (extra: Record<string, string> = {}) => hrefAgenda(base, v, extra);
 

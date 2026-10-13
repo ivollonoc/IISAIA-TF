@@ -4,13 +4,14 @@ import { formatDia, formatPesos } from "@/lib/format";
 import { BotonPagarSeleccion } from "@/modules/cuenta-corriente/components/BotonPagarSeleccion";
 import { pendientesDelGrupo } from "@/modules/socios/grupos.service";
 import { Badge, Card, Tabla, Titulo } from "@/components/ui";
+import { urlClub } from "@/lib/tenant";
 
 /** Pestaña del titular: cargos pendientes de todo su grupo familiar, para pagarlos juntos. */
 export default async function PagosGrupoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { club, user } = await requireClub(slug, "socio");
   const { integrantes, pendientes, total } = await pendientesDelGrupo(club.id, user.socioId!);
-  if (integrantes.length < 2) redirect(`/c/${slug}/socio`);
+  if (integrantes.length < 2) redirect(urlClub(slug, "/socio"));
 
   return (
     <>
@@ -36,7 +37,7 @@ export default async function PagosGrupoPage({ params }: { params: Promise<{ slu
           {pendientes.length === 0 ? (
             <p className="text-sm text-slate-500">Tu grupo no tiene cargos pendientes. ¡Están todos al día!</p>
           ) : (
-            <form action={`/c/${slug}/socio/pagar`} method="get" className="flex flex-col gap-4">
+            <form action={urlClub(slug, "/socio/pagar")} method="get" className="flex flex-col gap-4">
               <p className="text-sm text-slate-600">
                 Total pendiente del grupo: <strong>{formatPesos(total)}</strong>. Elegí qué cargos pagar.
               </p>

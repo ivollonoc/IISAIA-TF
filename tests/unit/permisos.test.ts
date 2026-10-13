@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { homePath, puedeAcceder, type UsuarioSesion } from "@/lib/permisos";
 
 const usuario = (over: Partial<UsuarioSesion>): UsuarioSesion => ({
@@ -46,5 +46,17 @@ describe("homePath", () => {
   it("sin club o sin ficha de socio va a /sin-acceso (evita loops)", () => {
     expect(homePath(usuario({ rol: "ADMIN_CLUB", clubSlug: null }))).toBe("/sin-acceso");
     expect(homePath(usuario({ socioId: null }))).toBe("/sin-acceso");
+  });
+
+  it("en modo subdominio lleva al subdominio del club (y el admin general al dominio raíz)", () => {
+    vi.stubEnv("TENANT_MODE", "subdomain");
+    vi.stubEnv("ROOT_DOMAIN", "clubdesocios.com.ar");
+    try {
+      expect(homePath(usuario({ rol: "SUPERADMIN" }))).toBe("https://clubdesocios.com.ar/admin");
+      expect(homePath(usuario({ rol: "ADMIN_CLUB" }))).toBe("https://club-a.clubdesocios.com.ar/admin");
+      expect(homePath(usuario({}))).toBe("https://club-a.clubdesocios.com.ar/socio");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

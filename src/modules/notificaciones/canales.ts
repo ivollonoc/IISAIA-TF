@@ -2,6 +2,7 @@
 // salida (MensajeSaliente). El mail sale de verdad solo si hay RESEND_API_KEY y EMAIL_FROM.
 import type { CanalAviso } from "@prisma/client";
 import { db } from "@/lib/db";
+import { urlVisible } from "@/lib/tenant";
 
 export interface Destinatario {
   usuarioId: string | null;
@@ -63,7 +64,7 @@ export async function entregar(clubId: string | null, tipo: string, entregas: En
   for (const e of entregas) {
     const envios: Promise<unknown>[] = [];
     if (canales.includes("EMAIL") && e.destinatario.email) {
-      const pie = e.link ? `\n\nVer en la app: ${e.link}` : "";
+      const pie = e.link ? `\n\nVer en la app: ${urlVisible(e.link)}` : "";
       envios.push(proveedores.email(clubId, e.destinatario.email, e.titulo, `${e.cuerpo}${pie}`));
     }
     if (canales.includes("SMS") && e.destinatario.telefono) {

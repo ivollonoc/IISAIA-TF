@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decidirRuta, tenantDeHost, urlClub, urlVisible } from "@/lib/tenant";
+import { decidirRuta, tenantDeHost, urlClub, urlRaiz, urlVisible } from "@/lib/tenant";
 
 const ROOT = "clubdesocios.com.ar";
 const SUB = { modo: "subdomain", root: ROOT } as const;
@@ -84,5 +84,13 @@ describe("urlVisible", () => {
     expect(urlVisible("/c/demo/admin/socios?ok=1", PATH)).toBe("/c/demo/admin/socios?ok=1");
     expect(urlVisible("/admin", SUB)).toBe("/admin");
     expect(urlVisible("/avisos", SUB)).toBe("/avisos");
+  });
+});
+
+describe("urlRaiz", () => {
+  it("en modo subdominio es la URL absoluta del dominio raíz; en modo ruta, la ruta", () => {
+    expect(urlRaiz("/admin", SUB)).toBe("https://clubdesocios.com.ar/admin");
+    expect(urlRaiz("/", { modo: "subdomain", root: "localhost:3000" })).toBe("http://localhost:3000/");
+    expect(urlRaiz("/admin", PATH)).toBe("/admin");
   });
 });
