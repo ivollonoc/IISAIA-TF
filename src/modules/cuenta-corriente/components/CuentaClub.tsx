@@ -1,5 +1,5 @@
 import { Card, Stat, Tabla } from "@/components/ui";
-import { formatFecha, formatPesos } from "@/lib/format";
+import { formatFechaHora, formatPesos } from "@/lib/format";
 import type { CuentaClubData } from "../consultas.service";
 
 /** Cuenta del club (solo presentación): la usan el admin del club y, en lectura, el admin general. */
@@ -25,7 +25,7 @@ export function CuentaClub({ cuenta }: { cuenta: CuentaClubData }) {
           <Tabla headers={["Fecha", "Socio", "Medio", "Monto"]}>
             {cuenta.acreditaciones.map((p) => (
               <tr key={p.id}>
-                <td className="py-2 pr-4">{formatFecha(p.fecha)}</td>
+                <td className="py-2 pr-4">{formatFechaHora(p.fecha)}</td>
                 <td className="py-2 pr-4">
                   N° {p.socio.nroSocio} · {p.socio.apellido}, {p.socio.nombre}
                 </td>

@@ -25,8 +25,8 @@ export async function marcarTodasLeidasAction() {
 
 export async function enviarAvisoClubAction(slug: string, formData: FormData) {
   await ejecutar(`${rutaAdmin(slug)}/avisos`, async () => {
-    const { club } = await requireClub(slug, "admin");
-    const { destinatarios } = await enviarAvisoClub(club.id, datos(formData));
+    const { club, user } = await requireClub(slug, "admin");
+    const { destinatarios } = await enviarAvisoClub(club.id, datos(formData), user.id);
     return `Aviso enviado a ${destinatarios} ${destinatarios === 1 ? "socio" : "socios"}`;
   });
 }
@@ -41,8 +41,8 @@ export async function actualizarCanalesAction(slug: string, formData: FormData) 
 
 export async function enviarAvisoPlataformaAction(formData: FormData) {
   await ejecutar("/admin/avisos", async () => {
-    await requireSuperadmin();
-    await enviarAvisoPlataforma(datos(formData));
-    return "Aviso enviado";
+    const user = await requireSuperadmin();
+    const { destinatarios } = await enviarAvisoPlataforma(datos(formData), user.id);
+    return `Aviso enviado a ${destinatarios} ${destinatarios === 1 ? "administrador" : "administradores"}`;
   });
 }

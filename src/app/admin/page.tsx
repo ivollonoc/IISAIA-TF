@@ -2,31 +2,22 @@ import Link from "next/link";
 import { leerAviso } from "@/lib/aviso";
 import { requireSuperadmin } from "@/lib/session";
 import { listarClubs } from "@/modules/clubs/service";
-import { resumenPlataforma } from "@/modules/cuenta-corriente/consultas.service";
-import { formatPesos } from "@/lib/format";
-import { Aviso, Boton, Campo, Card, Stat, Tabla, Titulo, type SearchParams } from "@/components/ui";
+import { Aviso, Boton, Campo, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
 import { crearClubAction } from "@/modules/clubs/actions";
 
+/** Clubes afiliados: sin información financiera (cada club administra la suya). */
 export default async function AdminGeneralPage({ searchParams }: { searchParams: SearchParams }) {
   await requireSuperadmin();
-  const [clubs, resumen, msg] = await Promise.all([listarClubs(), resumenPlataforma(), searchParams]);
+  const [clubs, msg] = await Promise.all([listarClubs(), searchParams]);
 
   return (
     <>
-      <Titulo sub="Clubes afiliados a la plataforma">Admin general</Titulo>
+      <Titulo sub="Clubes afiliados a la plataforma">Clubes</Titulo>
       <Aviso {...leerAviso(msg)} />
-      <Link href="/admin/avisos" className="mb-4 inline-block text-sm font-medium text-emerald-700 underline">
-        Avisos a los clubes y buzón de salida →
-      </Link>
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat label={`Cobrado ${resumen.periodo}`} valor={formatPesos(resumen.cobradoMes)} />
-        <Stat label="Deuda vencida" valor={formatPesos(resumen.deudaVencida)} />
-        <Stat label="Socios morosos" valor={resumen.sociosMorosos} />
-      </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title={`Clubes (${clubs.length})`}>
-            <Tabla headers={["Club", "URL", "Administrador", "Socios", "Cobrado del mes", "Deuda vencida", ""]}>
+            <Tabla headers={["Club", "URL", "Slug", "Socios activos", "Administrador"]}>
               {clubs.map((c) => (
                 <tr key={c.id}>
                   <td className="py-2 pr-4 font-medium">{c.nombre}</td>
@@ -35,15 +26,9 @@ export default async function AdminGeneralPage({ searchParams }: { searchParams:
                       /c/{c.slug}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4">{c.usuarios.map((u) => u.email).join(", ") || "—"}</td>
+                  <td className="py-2 pr-4 font-mono text-xs">{c.slug}</td>
                   <td className="py-2 pr-4">{c._count.socios}</td>
-                  <td className="py-2 pr-4">{formatPesos(resumen.porClub[c.id]?.cobradoMes ?? 0)}</td>
-                  <td className="py-2 pr-4">{formatPesos(resumen.porClub[c.id]?.deudaVencida ?? 0)}</td>
-                  <td className="py-2 pr-4">
-                    <Link href={`/admin/clubs/${c.slug}/cuenta`} className="text-emerald-700 underline">
-                      Ver cuenta
-                    </Link>
-                  </td>
+                  <td className="py-2 pr-4">{c.usuarios.map((u) => u.email).join(", ") || "—"}</td>
                 </tr>
               ))}
             </Tabla>

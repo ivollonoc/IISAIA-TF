@@ -6,7 +6,7 @@ import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
 import { DIA_MS, inicioDelDia } from "../src/lib/periodo";
 import { formatDia, formatPesos } from "../src/lib/format";
-import { calendarioDemo, escenarioDemo } from "./escenario-demo";
+import { calendarioDemo, escenarioDemo, fechasDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +17,7 @@ async function main() {
   // anterior = período ya vencido, actual = período por vencer (nombres del caso habitual).
   const { vencido: anterior, porVencer: actual, diaVencimiento } = escenarioDemo();
   const demo = calendarioDemo();
+  const fechas = fechasDemo(escenarioDemo());
 
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN" } });
@@ -85,6 +86,7 @@ async function main() {
         data: {
           clubId: club.id, socioId: s.id, concepto: "CUOTA", clave: "CUOTA",
           descripcion: `Cuota social ${periodo}`, periodo, monto: cuota(s), vencimiento: vence,
+          createdAt: fechas.cargo(periodo),
         },
       });
     }
@@ -93,16 +95,17 @@ async function main() {
         data: {
           clubId: club.id, socioId: s.id, concepto: "ACTIVIDAD", actividadId: a.id, clave: `ACT:${a.id}`,
           descripcion: `${a.nombre} ${periodo}`, periodo, monto: a.arancel, vencimiento: vence,
+          createdAt: fechas.cargo(periodo),
         },
       });
     }
   }
 
-  async function pagar(socio: Socio, periodos: string[], medio: MedioPago) {
+  async function pagar(socio: Socio, periodos: string[], medio: MedioPago, fecha: Date) {
     const cargos = await prisma.cargo.findMany({ where: { socioId: socio.id, periodo: { in: periodos } } });
     const pago = await prisma.pago.create({
       data: {
-        clubId: club.id, socioId: socio.id, medio,
+        clubId: club.id, socioId: socio.id, medio, fecha,
         monto: cargos.reduce((s, c) => s + c.monto, 0),
         registradoPor: medio === "ONLINE" ? null : admin.id,
       },
@@ -114,15 +117,17 @@ async function main() {
     return { pago, cargos };
   }
 
-  await pagar(martin, [anterior], "EFECTIVO");
-  await pagar(martin, [actual], "TRANSFERENCIA");
-  await pagar(valentina, [anterior, actual], "TRANSFERENCIA");
-  await pagar(sofia, [anterior], "EFECTIVO");
-  const online = await pagar(lucia, [anterior], "ONLINE");
+  // Fechas en el pasado (ver fechasDemo): el vencido se pagó antes de vencer; el actual, estos días.
+  await pagar(martin, [anterior], "EFECTIVO", fechas.pagoVencido(0));
+  await pagar(martin, [actual], "TRANSFERENCIA", fechas.pagoPorVencer(0));
+  await pagar(valentina, [anterior, actual], "TRANSFERENCIA", fechas.pagoPorVencer(1));
+  await pagar(sofia, [anterior], "EFECTIVO", fechas.pagoVencido(1));
+  const online = await pagar(lucia, [anterior], "ONLINE", fechas.pagoVencido(2));
   await prisma.intentoPago.create({
     data: {
       clubId: club.id, socioId: lucia.id, cargoIds: online.cargos.map((c) => c.id), monto: online.pago.monto,
       estado: "APROBADO", pasarela: "simulada", referenciaExterna: "SIM-seed", ultimos4: "0001", pagoId: online.pago.id,
+      createdAt: online.pago.fecha,
     },
   });
 

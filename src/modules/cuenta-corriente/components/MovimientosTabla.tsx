@@ -1,5 +1,5 @@
 import { Tabla } from "@/components/ui";
-import { formatFecha, formatPesos } from "@/lib/format";
+import { formatFechaHora, formatPesos } from "@/lib/format";
 import type { CuentaSocio } from "../consultas.service";
 import { EstadoCargo } from "./EstadoCargo";
 
@@ -33,7 +33,7 @@ export function MovimientosTabla({
               )}
             </td>
           )}
-          <td className="py-2 pr-4">{formatFecha(m.fecha)}</td>
+          <td className="py-2 pr-4">{formatFechaHora(m.fecha)}</td>
           <td className="py-2 pr-4">{m.concepto}</td>
           <td className="py-2 pr-4">{m.tipo === "CARGO" ? formatPesos(m.monto) : ""}</td>
           <td className="py-2 pr-4">{m.tipo === "PAGO" ? formatPesos(m.monto) : ""}</td>

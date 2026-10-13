@@ -1,7 +1,8 @@
 // Bandeja in-app de cada usuario, avisos manuales y buzón de salida.
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { audiencia } from "./destinatarios";
+import { canalesActivos } from "./canales";
+import { adminsDeClub, audiencia } from "./destinatarios";
 import { notificar, notificarAdmins } from "./emitir";
 import { avisoClubSchema, avisoPlataformaSchema } from "./schema";
 
@@ -32,33 +33,52 @@ export async function marcarTodasLeidas(usuarioId: string) {
   await db.notificacion.updateMany({ where: { usuarioId, leidaAt: null }, data: { leidaAt: new Date() } });
 }
 
-/** Aviso del admin de club a todos los socios o a los inscriptos de una actividad. */
-export async function enviarAvisoClub(clubId: string, input: unknown) {
+/** Aviso del admin de club a todos los socios o a los inscriptos de una actividad; queda en el historial. */
+export async function enviarAvisoClub(clubId: string, input: unknown, autorId?: string) {
   const data = avisoClubSchema.parse(input);
+  const club = await db.club.findUniqueOrThrow({ where: { id: clubId }, select: { canales: true } });
+  let para = "Todos los socios";
   if (data.actividadId) {
-    const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { id: true } });
+    const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { nombre: true } });
     if (!actividad) throw new DomainError("Actividad no encontrada");
+    para = `Inscriptos de ${actividad.nombre}`;
   }
   const destinatarios = (await audiencia(clubId, data.actividadId)).length;
   await notificar(clubId, { tipo: "AVISO_CLUB", asunto: data.asunto, mensaje: data.mensaje, actividadId: data.actividadId });
+  await db.avisoEnviado.create({
+    data: {
+      origen: "CLUB", clubId, autorId: autorId ?? null, asunto: data.asunto, mensaje: data.mensaje, para, destinatarios,
+      canales: canalesActivos(club.canales),
+    },
+  });
   return { destinatarios };
 }
 
-/** Aviso del admin general a los admins de club (de todos o de uno). */
-export async function enviarAvisoPlataforma(input: unknown) {
+/** Aviso del admin general a los admins de club (de todos o de uno); queda en el historial. */
+export async function enviarAvisoPlataforma(input: unknown, autorId?: string) {
   const data = avisoPlataformaSchema.parse(input);
-  if (data.clubId && !(await db.club.findUnique({ where: { id: data.clubId }, select: { id: true } }))) {
-    throw new DomainError("Club no encontrado");
+  let para = "Todos los clubes";
+  if (data.clubId) {
+    const club = await db.club.findUnique({ where: { id: data.clubId }, select: { nombre: true } });
+    if (!club) throw new DomainError("Club no encontrado");
+    para = club.nombre;
   }
+  const destinatarios = (await adminsDeClub(data.clubId)).length;
   await notificarAdmins({ asunto: data.asunto, mensaje: data.mensaje, clubId: data.clubId });
+  await db.avisoEnviado.create({
+    data: {
+      origen: "PLATAFORMA", autorId: autorId ?? null, asunto: data.asunto, mensaje: data.mensaje, para, destinatarios,
+      canales: ["IN_APP", "EMAIL"],
+    },
+  });
+  return { destinatarios };
 }
 
-/** Mails y SMS enviados: de un club o (null) de toda la plataforma. */
-export function buzonSalida(clubId: string | null, limite = 50) {
-  return db.mensajeSaliente.findMany({
-    where: clubId ? { clubId } : {},
+/** Avisos manuales enviados por un club (o por la plataforma), más recientes primero. */
+export function historialAvisos(origen: "CLUB" | "PLATAFORMA", clubId?: string, limite = 50) {
+  return db.avisoEnviado.findMany({
+    where: origen === "CLUB" ? { origen, clubId } : { origen },
     orderBy: { createdAt: "desc" },
     take: limite,
-    include: { club: { select: { nombre: true } } },
   });
 }

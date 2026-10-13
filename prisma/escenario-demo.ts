@@ -13,6 +13,37 @@ export function escenarioDemo(hoy: Date = new Date()): { vencido: string; porVen
   return { vencido: actual, porVencer: periodoSiguiente(actual), diaVencimiento: 10 };
 }
 
+const HORA_MS = 60 * 60 * 1000;
+/** Instante de un día (medianoche UTC) a cierta hora de Argentina (UTC-3). */
+const aLas = (dia: Date, hora: number, minutos = 0) => new Date(dia.getTime() + (hora + 3) * HORA_MS + minutos * 60_000);
+
+/**
+ * Fechas realistas para los cargos y pagos del seed (que no queden todos "ahora"): los cargos se
+ * crean el día 1 de su período a las 9:00 (o ayer, si el período todavía no empezó); los pagos del
+ * período vencido, un par de días antes del vencimiento en horario de atención; y los del período
+ * por vencer, en los últimos días. `k` distingue a cada socio que paga.
+ */
+export function fechasDemo(e: { vencido: string; porVencer: string; diaVencimiento: number }, hoy: Date = new Date()) {
+  const hoyDia = inicioDelDia(hoy);
+  const ayer = aLas(new Date(hoyDia.getTime() - DIA_MS), 9);
+  const cargo = (periodo: string) => {
+    const [anio, mes] = periodo.split("-").map(Number);
+    const primero = aLas(new Date(Date.UTC(anio, mes - 1, 1)), 9);
+    return primero.getTime() < hoy.getTime() - HORA_MS ? primero : ayer;
+  };
+  const despuesDe = (candidato: Date, minimo: Date, k: number) =>
+    candidato.getTime() > minimo.getTime() ? candidato : new Date(minimo.getTime() + (k + 1) * 30 * 60_000);
+
+  const [anioV, mesV] = e.vencido.split("-").map(Number);
+  const venceVencido = new Date(Date.UTC(anioV, mesV - 1, e.diaVencimiento));
+  return {
+    cargo,
+    pagoVencido: (k: number) => despuesDe(aLas(new Date(venceVencido.getTime() - 2 * DIA_MS), 10 + 2 * k, 15 * k), cargo(e.vencido), k),
+    pagoPorVencer: (k: number) =>
+      despuesDe(aLas(new Date(hoyDia.getTime() - (k + 1) * DIA_MS), 11 + 3 * k, 20), cargo(e.porVencer), k),
+  };
+}
+
 /** Día de la semana de "Fútbol infantil" en el seed (lunes). */
 const DIA_FUTBOL = 1;
 

@@ -53,9 +53,10 @@ describe("crearClub", () => {
 });
 
 describe("listarClubs", () => {
-  it("incluye los emails de sus admins y la cantidad de socios", async () => {
+  it("incluye los emails de sus admins y la cantidad de socios activos", async () => {
     const club = await crearClub(input());
     await f.crearSocio(club.id);
+    await f.crearSocio(club.id, { activo: false });
     const [c] = await listarClubs();
     expect(c.usuarios.map((u) => u.email)).toEqual(["admin@norte.com"]);
     expect(c._count.socios).toBe(1);

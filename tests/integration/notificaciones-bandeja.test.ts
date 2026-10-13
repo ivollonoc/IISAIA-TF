@@ -3,10 +3,10 @@ import { ZodError } from "zod";
 import { db } from "@/lib/db";
 import { actualizarCanales } from "@/modules/clubs/service";
 import {
-  buzonSalida,
   contarNoLeidas,
   enviarAvisoClub,
   enviarAvisoPlataforma,
+  historialAvisos,
   listarNotificaciones,
   marcarLeida,
   marcarTodasLeidas,
@@ -81,7 +81,7 @@ describe("avisos manuales", () => {
 
   it("valida asunto y mensaje y rechaza una actividad de otro club", async () => {
     const club = await f.crearClub();
-    await expect(enviarAvisoClub(club.id, { asunto: "", mensaje: "x" })).rejects.toBeInstanceOf(ZodError);
+    await expect(enviarAvisoClub(club.id, { asunto: "", mensaje: "Hola a todos" })).rejects.toBeInstanceOf(ZodError);
     const ajena = await f.crearActividad((await f.crearClub()).id);
     await expect(enviarAvisoClub(club.id, { asunto: "Hola", mensaje: "Texto", actividadId: ajena.id })).rejects.toThrow(
       "Actividad no encontrada",
@@ -108,11 +108,32 @@ describe("canales y buzón", () => {
     expect((await db.club.findUniqueOrThrow({ where: { id: club.id } })).canales).toEqual(["IN_APP"]);
   });
 
-  it("el buzón de salida de un club no muestra los de otro; el global muestra todos", async () => {
-    const [c1, c2] = [await f.crearClub(), await f.crearClub()];
-    await db.mensajeSaliente.create({ data: { clubId: c1.id, canal: "EMAIL", destino: "a@x.com", cuerpo: "1", proveedor: "simulado" } });
-    await db.mensajeSaliente.create({ data: { clubId: c2.id, canal: "SMS", destino: "+54", cuerpo: "2", proveedor: "simulado" } });
-    expect((await buzonSalida(c1.id)).map((m) => m.destino)).toEqual(["a@x.com"]);
-    expect(await buzonSalida(null)).toHaveLength(2);
+  it("el historial guarda los avisos manuales de cada club por separado, sin los individuales", async () => {
+    const [c1, c2] = [await f.crearClub({ canales: ["IN_APP", "EMAIL"] }), await f.crearClub()];
+    const act = await f.crearActividad(c1.id, { nombre: "Yoga" });
+    const admin = await f.crearUsuario({ rol: "ADMIN_CLUB", clubId: c1.id });
+    await f.crearSocioConUsuario(c1.id);
+    await enviarAvisoClub(c1.id, { asunto: "General", mensaje: "Para todos" }, admin.id);
+    await enviarAvisoClub(c1.id, { asunto: "Yoga", mensaje: "Solo Yoga", actividadId: act.id }, admin.id);
+    await enviarAvisoClub(c2.id, { asunto: "Otro club", mensaje: "Hola a todos" });
+
+    const h = await historialAvisos("CLUB", c1.id);
+    expect(h.map((a) => [a.asunto, a.para, a.destinatarios, a.canales])).toEqual([
+      ["Yoga", "Inscriptos de Yoga", 0, ["IN_APP", "EMAIL"]],
+      ["General", "Todos los socios", 1, ["IN_APP", "EMAIL"]],
+    ]);
+    expect(h[0].autorId).toBe(admin.id);
+  });
+
+  it("el historial de la plataforma guarda sus avisos y no los de los clubes", async () => {
+    const club = await f.crearClub({ nombre: "Club Atlas" });
+    await f.crearUsuario({ rol: "ADMIN_CLUB", clubId: club.id });
+    await enviarAvisoPlataforma({ asunto: "A todos", mensaje: "Hola a todos", clubId: "" });
+    await enviarAvisoPlataforma({ asunto: "A Atlas", mensaje: "Hola a todos", clubId: club.id });
+    await enviarAvisoClub(club.id, { asunto: "Del club", mensaje: "Hola a todos" });
+    expect((await historialAvisos("PLATAFORMA")).map((a) => [a.asunto, a.para, a.destinatarios])).toEqual([
+      ["A Atlas", "Club Atlas", 1],
+      ["A todos", "Todos los clubes", 1],
+    ]);
   });
 });

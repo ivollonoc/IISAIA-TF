@@ -3,8 +3,8 @@ import { requireClub } from "@/lib/session";
 import { listarActividades } from "@/modules/actividades/service";
 import { actualizarCanalesAction, enviarAvisoClubAction } from "@/modules/notificaciones/actions";
 import { proveedorEmail } from "@/modules/notificaciones/canales";
-import { buzonSalida } from "@/modules/notificaciones/service";
-import { BuzonSalida } from "@/modules/notificaciones/components/BuzonSalida";
+import { historialAvisos } from "@/modules/notificaciones/service";
+import { HistorialAvisos } from "@/modules/notificaciones/components/HistorialAvisos";
 import { Aviso, Boton, Campo, Card, Selector, Titulo, type SearchParams } from "@/components/ui";
 
 export default async function AvisosClubPage({
@@ -16,12 +16,12 @@ export default async function AvisosClubPage({
 }) {
   const { slug } = await params;
   const { club } = await requireClub(slug, "admin");
-  const [actividades, buzon, msg] = await Promise.all([listarActividades(club.id), buzonSalida(club.id), searchParams]);
+  const [actividades, historial, msg] = await Promise.all([listarActividades(club.id), historialAvisos("CLUB", club.id), searchParams]);
   const simulado = proveedorEmail() === "simulado";
 
   return (
     <>
-      <Titulo sub="Comunicación con los socios: avisos manuales, vías de aviso y mensajes enviados">Avisos</Titulo>
+      <Titulo sub="Comunicación con los socios: avisos manuales y vías de aviso">Avisos</Titulo>
       <Aviso {...leerAviso(msg)} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
@@ -45,12 +45,8 @@ export default async function AvisosClubPage({
               <Boton type="submit">Enviar</Boton>
             </form>
           </Card>
-          <Card title="Buzón de salida">
-            <p className="mb-3 text-xs text-slate-500">
-              Mails y SMS enviados a los socios{simulado ? " (simulados: no salen de la app)" : ""}. Los avisos en la app
-              llegan siempre a la bandeja de cada socio.
-            </p>
-            <BuzonSalida mensajes={buzon} />
+          <Card title="Avisos enviados">
+            <HistorialAvisos avisos={historial} unidad={["socio", "socios"]} />
           </Card>
         </div>
         <Card title="Vías de aviso">
@@ -67,6 +63,7 @@ export default async function AvisosClubPage({
               <input type="checkbox" name="SMS" defaultChecked={club.canales.includes("SMS")} className="accent-emerald-700" />
               SMS (a los socios con teléfono)
             </label>
+            {simulado && <p className="text-xs text-slate-500">En esta demo los mails y SMS son simulados: no salen de la app.</p>}
             <Boton type="submit">Guardar</Boton>
           </form>
         </Card>

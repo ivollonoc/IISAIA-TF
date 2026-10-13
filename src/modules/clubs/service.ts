@@ -8,7 +8,7 @@ export function listarClubs() {
     orderBy: { createdAt: "desc" },
     include: {
       usuarios: { where: { rol: "ADMIN_CLUB" }, select: { email: true } },
-      _count: { select: { socios: true } },
+      _count: { select: { socios: { where: { activo: true } } } },
     },
   });
 }

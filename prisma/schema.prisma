@@ -70,19 +70,22 @@ model Club {
   listaEspera         ListaEspera[]
   notificaciones      Notificacion[]
   mensajesSalientes   MensajeSaliente[]
+  avisosEnviados      AvisoEnviado[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
 model Usuario {
-  id             String         @id @default(cuid())
-  email          String         @unique
-  nombre         String?
-  rol            Rol
-  clubId         String?
-  club           Club?          @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  socio          Socio?
-  createdAt      DateTime       @default(now())
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nombre    String?
+  rol       Rol
+  clubId    String?
+  club      Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  socio     Socio?
+  createdAt DateTime @default(now())
+
   notificaciones Notificacion[]
+  avisosEnviados AvisoEnviado[]
 
   @@index([clubId])
 }
@@ -351,4 +354,23 @@ model ListaEspera {
   @@unique([socioId, actividadId])
   @@unique([socioId, eventoId])
   @@index([clubId])
+}
+
+// Historial de avisos manuales: lo que envió un club a sus socios o la plataforma a los clubes.
+// No guarda los avisos individuales (esos son privados de cada usuario).
+model AvisoEnviado {
+  id            String       @id @default(cuid())
+  origen        String // "CLUB" | "PLATAFORMA"
+  clubId        String? // club que lo envía (null si es de la plataforma)
+  club          Club?        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  autorId       String?
+  autor         Usuario?     @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  asunto        String
+  mensaje       String
+  para          String // "Todos los socios", "Inscriptos de Yoga", "Todos los clubes", "Club Atlas"
+  destinatarios Int
+  canales       CanalAviso[]
+  createdAt     DateTime     @default(now())
+
+  @@index([origen, clubId, createdAt])
 }
