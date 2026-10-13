@@ -78,6 +78,9 @@ export async function actualizarSocio(clubId: string, socioId: string, input: un
 
 /** Baja/alta lógica: la cuenta corriente se conserva. */
 export async function cambiarEstadoSocio(clubId: string, socioId: string, activo: boolean) {
-  const { count } = await db.socio.updateMany({ where: { id: socioId, clubId }, data: { activo } });
+  const { count } = await db.socio.updateMany({
+    where: { id: socioId, clubId },
+    data: { activo, bajaAt: activo ? null : new Date() },
+  });
   if (count === 0) throw new DomainError("Socio no encontrado");
 }

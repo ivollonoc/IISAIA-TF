@@ -71,6 +71,7 @@ model Club {
   notificaciones      Notificacion[]
   mensajesSalientes   MensajeSaliente[]
   avisosEnviados      AvisoEnviado[]
+  puntajes            Puntaje[]
 }
 
 // Cuenta de login. En v1 un email pertenece a un único club.
@@ -154,6 +155,7 @@ model Socio {
   tipoSocioId         String
   tipoSocio           TipoSocio           @relation(fields: [tipoSocioId], references: [id])
   activo              Boolean             @default(true)
+  bajaAt              DateTime? // fecha de la última baja (null si está activo)
   createdAt           DateTime            @default(now())
   pagos               Pago[]              @relation("PagosDelSocio")
   reservas            Reserva[]
@@ -161,6 +163,7 @@ model Socio {
   intentosPago        IntentoPago[]
   inscripcionesEvento InscripcionEvento[]
   listaEspera         ListaEspera[]
+  puntajes            Puntaje[]
 
   @@unique([clubId, nroSocio])
   @@unique([clubId, dni])
@@ -207,6 +210,7 @@ model Actividad {
   excepciones ExcepcionClase[]
   eventos     Evento[]
   listaEspera ListaEspera[]
+  puntajes    Puntaje[]
 
   @@index([clubId])
 }
@@ -403,4 +407,21 @@ model TokenAcceso {
   createdAt DateTime  @default(now())
 
   @@index([usuarioId])
+}
+
+// Puntaje de un socio a una actividad a la que fue (en medias estrellas: 1..10 = 0,5..5).
+model Puntaje {
+  id          String    @id @default(cuid())
+  clubId      String
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  actividadId String
+  actividad   Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  socioId     String
+  socio       Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  medias      Int // medias estrellas: 1..10 (9 = 4,5 estrellas)
+  comentario  String?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([actividadId, socioId])
+  @@index([clubId])
 }
