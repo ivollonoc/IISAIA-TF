@@ -12,9 +12,9 @@ App web multi-tenant para que clubes deportivos gestionen socios, cuotas y activ
 
 | Rol | Puede |
 |---|---|
-| Admin general | Crear clubes y asignar su administrador · ver lo cobrado y la deuda vencida de cada club y el consolidado · ver la cuenta de un club en solo lectura |
-| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · **Agenda** (vistas semana, mes y lista): actividades recurrentes con uno o más días por semana, vigencia, cupo y arancel mensual; eventos puntuales informativos o con inscripción (cupo y precio opcionales); suspender o reprogramar clases; ver inscriptos y lista de espera · generar los cargos del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
-| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · **Agenda**: sus clases y eventos (semana o mes), inscribirse/cancelar actividades y eventos (respeta cupo; los pagos suman su cargo) y anotarse en la lista de espera de los llenos · próximos 7 días en su inicio |
+| Admin general | Pestaña **Clubes**: crear clubes y asignar su administrador, ver socios activos de cada uno (sin información financiera de los clubes) · pestaña **Avisos**: avisar a los admins de club |
+| Admin de club | Tipos de socio, cuotas y día de vencimiento · alta/modificación/baja de socios · **Agenda** (vistas semana, mes y lista): actividades recurrentes con uno o más horarios por semana (incluso varios el mismo día), vigencia, cupo y precio por clase; ver quién reservó cada clase; eventos puntuales informativos o con inscripción (cupo y precio opcionales); suspender o reprogramar clases; **Grupos familiares** (indicadores y armado de grupos) · generar las cuotas del mes · registrar pagos en ventanilla y anular cargos · cuenta corriente del club · tablero del mes |
+| Socio | Ver su cuenta corriente y su estado (al día / con deuda vencida) · pagar cargos online · **Actividades y eventos**: reservar clases sueltas o todas las de un horario por N semanas (cupo y lista de espera por clase; las pagas generan su cargo) e inscribirse a eventos · **Calendario** (semana o mes) · el titular de un grupo familiar paga los cargos de todo el grupo desde **Pagos del grupo** |
 
 Los tres roles tienen una **bandeja de avisos** (campana en el encabezado y franja con el último aviso sin leer). Los avisos se generan solos: pago acreditado, cargos del mes listos para pagar, clases suspendidas o reprogramadas, actividades y eventos nuevos o cancelados, cambios de horario y lugares liberados para quienes están en lista de espera. El admin de club también envía avisos manuales (a todos o a los inscriptos de una actividad) y elige las vías: in-app siempre, más mail y/o SMS. El admin general avisa a los admins de club.
 
@@ -96,7 +96,7 @@ El esquema se versiona con `prisma migrate` (carpeta `prisma/migrations`).
 
 El seed deja cargos de dos meses (uno vencido y otro por vencer): Juan figura moroso y Lucía (`socio@demo.club`) tiene deuda por vencer para probar el pago online. Por eso "Generar cargos" del mes en curso puede informar 0 cargos nuevos: ya existen.
 
-En la Agenda: Natación (lunes y miércoles, cupo 2, Lucía inscripta), Fútbol infantil (lunes, con una clase suspendida esta semana y otra reprogramada la siguiente) y Yoga (martes y jueves, gratis, lleno, con Lucía en lista de espera); una asamblea informativa, una clínica de natación gratis con cupo y una cena anual paga ($15.000).
+En la Agenda: Natación (lunes y miércoles, cupo 2, $1.250 por clase, Lucía con sus próximas 4 clases reservadas), Fútbol infantil (lunes, $1.500, con una clase suspendida y otra reprogramada) y Yoga (martes y jueves, gratis; Martín y Valentina llenan la próxima clase y Lucía está en su lista de espera); una asamblea informativa, una clínica de natación gratis con cupo y una cena anual paga ($15.000). Grupos familiares: Lucía es titular de Sofía y Martín de Valentina.
 
 ## API REST
 
@@ -107,7 +107,6 @@ Autenticada con la sesión JWT de NextAuth.
 | GET | `/api/me` | cualquiera logueado |
 | GET / POST | `/api/clubs/:slug/socios` | admin del club |
 | GET | `/api/clubs/:slug/actividades` | admin o socio del club |
-| POST / DELETE | `/api/clubs/:slug/actividades/:id/inscripcion` | socio |
 
 ## Tests
 

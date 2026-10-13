@@ -59,7 +59,7 @@ describe("notificar", () => {
     const act = await f.crearActividad(club.id);
     const { socio, usuario } = await f.crearSocioConUsuario(club.id);
     await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, socio.id);
+    await f.reservarDirecto(club.id, act.id, socio.id);
 
     await notificar(club.id, { ...aviso, actividadId: act.id });
 

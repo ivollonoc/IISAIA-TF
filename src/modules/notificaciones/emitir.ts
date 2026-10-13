@@ -33,33 +33,33 @@ async function armar(clubId: string, slug: string, ev: EventoAviso): Promise<Ent
 
     case "CLASE_SUSPENDIDA": {
       const nombre = await nombreActividad(ev.actividadId);
-      return a(await para.inscriptosActividad(clubId, ev.actividadId), `Clase suspendida: ${nombre}`,
+      return a(await para.reservasDeLaClase(clubId, ev.actividadId, ev.fecha, ev.hora), `Clase suspendida: ${nombre}`,
         `La clase del ${clase(ev.fecha, ev.hora)} se suspende. Motivo: ${ev.motivo}.`, `${socio}/calendario`);
     }
 
     case "CLASE_REPROGRAMADA": {
       const nombre = await nombreActividad(ev.actividadId);
-      return a(await para.inscriptosActividad(clubId, ev.actividadId), `Clase reprogramada: ${nombre}`,
+      return a(await para.reservasDeLaClase(clubId, ev.actividadId, ev.fecha, ev.hora), `Clase reprogramada: ${nombre}`,
         `La clase del ${clase(ev.fecha, ev.hora)} pasa al ${clase(ev.nuevaFecha, ev.nuevaHora)}. Motivo: ${ev.motivo}.`,
         `${socio}/calendario`);
     }
 
     case "CLASE_RESTABLECIDA": {
       const nombre = await nombreActividad(ev.actividadId);
-      return a(await para.inscriptosActividad(clubId, ev.actividadId), `Clase confirmada: ${nombre}`,
+      return a(await para.reservasDeLaClase(clubId, ev.actividadId, ev.fecha, ev.hora), `Clase confirmada: ${nombre}`,
         `La clase del ${clase(ev.fecha, ev.hora)} vuelve a su horario habitual.`, `${socio}/calendario`);
     }
 
     case "ACTIVIDAD_NUEVA": {
       const nombre = await nombreActividad(ev.actividadId);
       return a(await para.todosLosSocios(clubId), `Nueva actividad: ${nombre}`,
-        "El club sumó una actividad nueva. Mirá los días y horarios e inscribite.", `${socio}/actividades`);
+        "El club sumó una actividad nueva. Mirá los días y horarios y reservá tu clase.", `${socio}/actividades`);
     }
 
     case "ACTIVIDAD_EDITADA": {
       const nombre = await nombreActividad(ev.actividadId);
-      return a(await para.inscriptosActividad(clubId, ev.actividadId), `Cambió el horario de ${nombre}`,
-        "La actividad cambió sus días, horarios o fechas. Revisá tu calendario.", `${socio}/calendario`);
+      return a(await para.sociosPorId(clubId, ev.socioIds), `Cambió el horario de ${nombre}`,
+        "La actividad cambió sus días, horarios o fechas. Revisá tus reservas.", `${socio}/actividades`);
     }
 
     case "EVENTO_NUEVO": {
@@ -75,11 +75,14 @@ async function armar(clubId: string, slug: string, ev: EventoAviso): Promise<Ent
         `El evento del ${clase(ev.fecha, ev.hora)} se canceló.`, `${socio}/actividades`);
 
     case "LUGAR_LIBERADO": {
-      const titulo = ev.actividadId
-        ? await nombreActividad(ev.actividadId)
-        : ((await db.evento.findUnique({ where: { id: ev.eventoId }, select: { titulo: true } }))?.titulo ?? "un evento");
-      const ref = ev.actividadId ? { actividadId: ev.actividadId } : { eventoId: ev.eventoId! };
-      return a(await para.enListaDeEspera(clubId, ref), `Se liberó un lugar en ${titulo}`,
+      if (ev.actividadId) {
+        const nombre = await nombreActividad(ev.actividadId);
+        const ref = { actividadId: ev.actividadId, fecha: ev.fecha, hora: ev.hora };
+        return a(await para.enListaDeEspera(clubId, ref), `Se liberó un lugar en ${nombre}`,
+          `Hay lugar en la clase del ${clase(ev.fecha, ev.hora)}: reservala antes que otro lo ocupe.`, `${socio}/actividades`);
+      }
+      const titulo = (await db.evento.findUnique({ where: { id: ev.eventoId }, select: { titulo: true } }))?.titulo ?? "un evento";
+      return a(await para.enListaDeEspera(clubId, { eventoId: ev.eventoId! }), `Se liberó un lugar en ${titulo}`,
         "Estabas en la lista de espera: inscribite antes que otro lo ocupe.", `${socio}/actividades`);
     }
 

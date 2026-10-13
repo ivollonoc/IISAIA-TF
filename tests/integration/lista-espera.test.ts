@@ -6,7 +6,7 @@ import { resetDb } from "../helpers/db";
 import * as f from "../helpers/factories";
 
 const dia = (a: number, m: number, d: number) => new Date(Date.UTC(a, m - 1, d));
-const hoy = new Date(Date.UTC(2026, 9, 15, 15));
+const hoy = new Date(Date.UTC(2026, 9, 15, 15)); // jueves 15/10/2026
 
 let club: Club;
 
@@ -15,10 +15,12 @@ beforeEach(async () => {
   club = await f.crearClub();
 });
 
-async function actividadLlena() {
+/** Actividad de cupo 1 (lunes 18:00) con la clase del lunes 19/10 llena. */
+async function claseLlena() {
   const act = await f.crearActividad(club.id, { cupo: 1 });
-  await f.inscribirDirecto(club.id, act.id, (await f.crearSocio(club.id)).id);
-  return act;
+  const clase = { actividadId: act.id, fecha: dia(2026, 10, 19), hora: "18:00" };
+  await f.reservarDirecto(club.id, act.id, (await f.crearSocio(club.id)).id, clase);
+  return clase;
 }
 
 async function eventoLleno() {
@@ -27,42 +29,49 @@ async function eventoLleno() {
   return ev;
 }
 
-describe("lista de espera de actividades", () => {
-  it("anota a un socio en una actividad llena y lo lista en orden de llegada", async () => {
-    const act = await actividadLlena();
+describe("lista de espera de clases", () => {
+  it("anota a un socio en una clase llena y lista en orden de llegada", async () => {
+    const clase = await claseLlena();
     const [a, b] = [await f.crearSocio(club.id), await f.crearSocio(club.id)];
-    await anotarEnEspera(club.id, a.id, { actividadId: act.id }, hoy);
-    await anotarEnEspera(club.id, b.id, { actividadId: act.id }, hoy);
-    expect(await enEspera(club.id, { actividadId: act.id })).toEqual([a.id, b.id]);
+    await anotarEnEspera(club.id, a.id, clase, hoy);
+    await anotarEnEspera(club.id, b.id, clase, hoy);
+    expect(await enEspera(club.id, clase)).toEqual([a.id, b.id]);
   });
 
-  it("rechaza si todavía hay lugar, si ya está inscripto o si ya está en la lista", async () => {
-    const libre = await f.crearActividad(club.id, { cupo: 5 });
+  it("es por clase: la del lunes siguiente tiene lugar", async () => {
+    const clase = await claseLlena();
     const s = await f.crearSocio(club.id);
-    await expect(anotarEnEspera(club.id, s.id, { actividadId: libre.id }, hoy)).rejects.toThrow(
-      "Todavía hay lugar: inscribite directamente",
+    await expect(anotarEnEspera(club.id, s.id, { ...clase, fecha: dia(2026, 10, 26) }, hoy)).rejects.toThrow(
+      "Todavía hay lugar: reservá directamente",
     );
-    const llena = await f.crearActividad(club.id, { cupo: 1 });
-    await f.inscribirDirecto(club.id, llena.id, s.id);
-    await expect(anotarEnEspera(club.id, s.id, { actividadId: llena.id }, hoy)).rejects.toThrow("Ya estás inscripto");
-    const otra = await actividadLlena();
-    await anotarEnEspera(club.id, s.id, { actividadId: otra.id }, hoy);
-    await expect(anotarEnEspera(club.id, s.id, { actividadId: otra.id }, hoy)).rejects.toThrow("Ya estás en la lista de espera");
   });
 
-  it("rechaza actividades de otro club o inactivas", async () => {
+  it("rechaza si ya reservó, si ya está en la lista o si la clase no existe o ya empezó", async () => {
+    const clase = await claseLlena();
+    const [reservo] = await db.reserva.findMany();
+    await expect(anotarEnEspera(club.id, reservo.socioId, clase, hoy)).rejects.toThrow("Ya reservaste esta clase");
+    const s = await f.crearSocio(club.id);
+    await anotarEnEspera(club.id, s.id, clase, hoy);
+    await expect(anotarEnEspera(club.id, s.id, clase, hoy)).rejects.toThrow("Ya estás en la lista de espera");
+    await expect(anotarEnEspera(club.id, s.id, { ...clase, hora: "20:00" }, hoy)).rejects.toThrow("Esa clase no existe");
+    await expect(anotarEnEspera(club.id, s.id, { ...clase, fecha: dia(2026, 10, 12) }, hoy)).rejects.toThrow("La clase ya empezó");
+  });
+
+  it("rechaza actividades de otro club", async () => {
     const ajena = await f.crearActividad((await f.crearClub()).id, { cupo: 0 });
     const s = await f.crearSocio(club.id);
-    await expect(anotarEnEspera(club.id, s.id, { actividadId: ajena.id }, hoy)).rejects.toThrow("Actividad no encontrada");
+    await expect(anotarEnEspera(club.id, s.id, { actividadId: ajena.id, fecha: dia(2026, 10, 19), hora: "18:00" }, hoy)).rejects.toThrow(
+      "Actividad no encontrada",
+    );
   });
 
   it("salir de la lista la borra y rechaza si no estaba", async () => {
-    const act = await actividadLlena();
+    const clase = await claseLlena();
     const s = await f.crearSocio(club.id);
-    await anotarEnEspera(club.id, s.id, { actividadId: act.id }, hoy);
-    await salirDeEspera(club.id, s.id, { actividadId: act.id });
+    await anotarEnEspera(club.id, s.id, clase, hoy);
+    await salirDeEspera(club.id, s.id, clase);
     expect(await db.listaEspera.count()).toBe(0);
-    await expect(salirDeEspera(club.id, s.id, { actividadId: act.id })).rejects.toThrow("No estabas en la lista de espera");
+    await expect(salirDeEspera(club.id, s.id, clase)).rejects.toThrow("No estabas en la lista de espera");
   });
 });
 

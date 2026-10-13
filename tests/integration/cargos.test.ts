@@ -19,29 +19,24 @@ beforeEach(async () => {
 });
 
 describe("generarCargosPeriodo", () => {
-  it("crea la cuota de cada socio activo y el arancel de sus actividades pagas activas", async () => {
+  it("crea la cuota de cada socio activo (las clases se cobran al reservarlas)", async () => {
     const tipo = await f.crearTipo(club.id, { cuotaMensual: 15000 });
     const socio = await f.crearSocio(club.id, { tipoSocioId: tipo.id });
-    const natacion = await f.crearActividad(club.id, { nombre: "Natación", arancel: 5000 });
-    await f.inscribirDirecto(club.id, natacion.id, socio.id);
+    const natacion = await f.crearActividad(club.id, { nombre: "Natación", precioClase: 5000 });
+    await f.reservarDirecto(club.id, natacion.id, socio.id);
 
-    expect(await generarCargosPeriodo(club.id, { periodo: "2026-10" }, hoy)).toEqual({ creados: 2, existentes: 0 });
+    expect(await generarCargosPeriodo(club.id, { periodo: "2026-10" }, hoy)).toEqual({ creados: 1, existentes: 0 });
     const cargos = await db.cargo.findMany({ where: { socioId: socio.id }, orderBy: { monto: "desc" } });
     expect(cargos.map((c) => [c.clave, c.descripcion, c.monto, c.estado])).toEqual([
       ["CUOTA", "Cuota social 2026-10", 15000, "PENDIENTE"],
-      [`ACT:${natacion.id}`, "Natación 2026-10", 5000, "PENDIENTE"],
     ]);
     expect(cargos.every((c) => c.vencimiento.getTime() === utc(2026, 10, 10).getTime())).toBe(true);
   });
 
-  it("omite socios inactivos, cuotas en $0, actividades gratuitas o inactivas y socios de otro club", async () => {
+  it("omite socios inactivos, cuotas en $0 y socios de otro club", async () => {
     const gratis = await f.crearTipo(club.id, { cuotaMensual: 0 });
-    const socioGratis = await f.crearSocio(club.id, { tipoSocioId: gratis.id });
+    await f.crearSocio(club.id, { tipoSocioId: gratis.id });
     await f.crearSocio(club.id, { activo: false });
-    const yoga = await f.crearActividad(club.id, { arancel: 0 });
-    const cerrada = await f.crearActividad(club.id, { arancel: 4000, activa: false });
-    await f.inscribirDirecto(club.id, yoga.id, socioGratis.id);
-    await f.inscribirDirecto(club.id, cerrada.id, socioGratis.id);
     const otro = await f.crearClub();
     await f.crearSocio(otro.id);
 

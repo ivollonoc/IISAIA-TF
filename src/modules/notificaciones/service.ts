@@ -33,7 +33,7 @@ export async function marcarTodasLeidas(usuarioId: string) {
   await db.notificacion.updateMany({ where: { usuarioId, leidaAt: null }, data: { leidaAt: new Date() } });
 }
 
-/** Aviso del admin de club a todos los socios o a los inscriptos de una actividad; queda en el historial. */
+/** Aviso del admin de club a todos los socios o a los participantes de una actividad; queda en el historial. */
 export async function enviarAvisoClub(clubId: string, input: unknown, autorId?: string) {
   const data = avisoClubSchema.parse(input);
   const club = await db.club.findUniqueOrThrow({ where: { id: clubId }, select: { canales: true } });
@@ -41,7 +41,7 @@ export async function enviarAvisoClub(clubId: string, input: unknown, autorId?: 
   if (data.actividadId) {
     const actividad = await db.actividad.findFirst({ where: { id: data.actividadId, clubId }, select: { nombre: true } });
     if (!actividad) throw new DomainError("Actividad no encontrada");
-    para = `Inscriptos de ${actividad.nombre}`;
+    para = `Participantes de ${actividad.nombre}`;
   }
   const destinatarios = (await audiencia(clubId, data.actividadId)).length;
   await notificar(clubId, { tipo: "AVISO_CLUB", asunto: data.asunto, mensaje: data.mensaje, actividadId: data.actividadId });

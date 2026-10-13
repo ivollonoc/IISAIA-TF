@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { DIA_MS, inicioDelDia } from "@/lib/periodo";
-import { armarCalendario, horarioDe, parsearDia } from "./reglas";
+import { armarCalendario, claveDia, horarioDe, parsearDia } from "./reglas";
 import { notificar } from "@/modules/notificaciones/emitir";
 import { reprogramarClaseSchema, suspenderClaseSchema } from "./schema";
 
@@ -30,19 +30,39 @@ export async function calendarioClub(clubId: string, desde: Date, hasta: Date) {
   return armarCalendario({ actividades, excepciones, eventos, desde, hasta });
 }
 
-/** Calendario del socio: sus actividades y los eventos del club o de esas actividades. */
+/**
+ * Calendario del socio: las clases que reservó (una reprogramada aparece en su nueva fecha) y los
+ * eventos del club o de las actividades en las que participa.
+ */
 export async function calendarioSocio(clubId: string, socioId: string, desde: Date, hasta: Date) {
   validarRango(desde, hasta);
-  const inscripciones = await db.inscripcion.findMany({ where: { clubId, socioId }, select: { actividadId: true } });
-  const ids = inscripciones.map((i) => i.actividadId);
+  // Una clase reprogramada puede venir de antes del rango: se buscan reservas desde 6 semanas antes.
+  const reservas = await db.reserva.findMany({
+    where: { clubId, socioId, fecha: { gte: new Date(desde.getTime() - MAX_DIAS_RANGO * DIA_MS), lte: hasta } },
+    select: { actividadId: true, fecha: true, hora: true },
+  });
+  const ids = [...new Set(reservas.map((r) => r.actividadId))];
+  const reservadas = new Set(reservas.map((r) => `${r.actividadId}|${claveDia(r.fecha)}|${r.hora}`));
+  const participa = await db.reserva.findMany({
+    where: { clubId, socioId, fecha: { gte: new Date(desde.getTime() - 30 * DIA_MS) } },
+    select: { actividadId: true },
+    distinct: ["actividadId"],
+  });
   const [actividades, excepciones, eventos] = await Promise.all([
     db.actividad.findMany({ where: { clubId, activa: true, id: { in: ids } }, include: { horarios: true } }),
     db.excepcionClase.findMany({ where: { clubId, actividadId: { in: ids }, ...excepcionesDelRango(desde, hasta) } }),
     db.evento.findMany({
-      where: { clubId, fecha: { gte: desde, lte: hasta }, OR: [{ actividadId: null }, { actividadId: { in: ids } }] },
+      where: {
+        clubId, fecha: { gte: desde, lte: hasta },
+        OR: [{ actividadId: null }, { actividadId: { in: participa.map((p) => p.actividadId) } }],
+      },
     }),
   ]);
-  return armarCalendario({ actividades, excepciones, eventos, desde, hasta });
+  return armarCalendario({ actividades, excepciones, eventos, desde, hasta }).filter((i) => {
+    if (i.tipo === "EVENTO") return true;
+    const original = i.estado === "REPROGRAMADA" ? [i.fechaOriginal!, i.horaOriginal!] as const : [i.fecha, i.hora] as const;
+    return reservadas.has(`${i.actividadId}|${claveDia(original[0])}|${original[1]}`);
+  });
 }
 
 const esPasada = (fecha: Date, hoy: Date) => fecha.getTime() < inicioDelDia(hoy).getTime();
@@ -77,6 +97,11 @@ export async function suspenderClase(clubId: string, input: unknown, hoy: Date =
   await claseModificable(clubId, data.actividadId, data.fecha, data.hora, hoy);
   const excepcion = await guardarExcepcion({
     clubId, actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, tipo: "SUSPENDIDA", motivo: data.motivo,
+  });
+  // Las reservas se mantienen (el socio ve la clase suspendida), pero no se cobra.
+  await db.cargo.updateMany({
+    where: { clubId, clave: `CLA:${data.actividadId}:${claveDia(data.fecha)}:${data.hora}`, estado: "PENDIENTE" },
+    data: { estado: "ANULADO", motivoAnulacion: "Clase suspendida" },
   });
   await notificar(clubId, { tipo: "CLASE_SUSPENDIDA", actividadId: data.actividadId, fecha: data.fecha, hora: data.hora, motivo: data.motivo });
   return excepcion;

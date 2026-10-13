@@ -8,7 +8,7 @@ interface ActividadForm {
   nombre: string;
   descripcion: string | null;
   cupo: number;
-  arancel: number;
+  precioClase: number;
   fechaInicio: Date;
   fechaFin: Date | null;
   horarios: { diaSemana: number; hora: string; duracionMin: number }[];
@@ -47,8 +47,8 @@ export function FormActividad({
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Campo label="Cupo" name="cupo" type="number" min={1} defaultValue={actividad?.cupo} required />
-        <Campo label="Arancel mensual ($)" name="arancel" type="number" min={0} defaultValue={actividad?.arancel ?? 0} />
+        <Campo label="Cupo por clase" name="cupo" type="number" min={1} defaultValue={actividad?.cupo} required />
+        <Campo label="Precio por clase ($, 0 = gratis)" name="precioClase" type="number" min={0} defaultValue={actividad?.precioClase ?? 0} />
       </div>
       <Boton type="submit">{boton}</Boton>
     </form>
@@ -79,7 +79,7 @@ export function FormEvento({
         <option value="">Todo el club</option>
         {actividades.map((a) => (
           <option key={a.id} value={a.id}>
-            Inscriptos de {a.nombre}
+            Participantes de {a.nombre}
           </option>
         ))}
       </Selector>

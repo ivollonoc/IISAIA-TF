@@ -58,7 +58,7 @@ export function crearActividad(
     horarios?: HorarioFactory[];
     cupo?: number;
     activa?: boolean;
-    arancel?: number;
+    precioClase?: number;
     fechaInicio?: Date;
     fechaFin?: Date | null;
     createdAt?: Date;
@@ -79,12 +79,24 @@ export function inscribirEventoDirecto(clubId: string, eventoId: string, socioId
   return db.inscripcionEvento.create({ data: { clubId, eventoId, socioId } });
 }
 
-export function anotarEsperaDirecto(clubId: string, socioId: string, ref: { actividadId?: string; eventoId?: string }) {
+export function anotarEsperaDirecto(
+  clubId: string,
+  socioId: string,
+  ref: { actividadId?: string; fecha?: Date; hora?: string; eventoId?: string },
+) {
   return db.listaEspera.create({ data: { clubId, socioId, ...ref } });
 }
 
-export function inscribirDirecto(clubId: string, actividadId: string, socioId: string) {
-  return db.inscripcion.create({ data: { clubId, actividadId, socioId } });
+/** Reserva de una clase (por defecto, el lunes 19/10/2026 a las 18:00, clase de la actividad por defecto). */
+export function reservarDirecto(
+  clubId: string,
+  actividadId: string,
+  socioId: string,
+  clase: { fecha?: Date; hora?: string } = {},
+) {
+  return db.reserva.create({
+    data: { clubId, actividadId, socioId, fecha: clase.fecha ?? new Date(Date.UTC(2026, 9, 19)), hora: clase.hora ?? "18:00" },
+  });
 }
 
 export function crearPagoDirecto(
@@ -99,7 +111,7 @@ export function crearCargo(
   clubId: string,
   socioId: string,
   over: {
-    concepto?: "CUOTA" | "ACTIVIDAD" | "EVENTO";
+    concepto?: "CUOTA" | "CLASE" | "EVENTO";
     actividadId?: string | null;
     clave?: string;
     descripcion?: string;

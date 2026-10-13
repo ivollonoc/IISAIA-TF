@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Club } from "@prisma/client";
 import { db } from "@/lib/db";
-import { cancelarInscripcion, crearActividad, editarActividad } from "@/modules/actividades/service";
+import { crearActividad, editarActividad } from "@/modules/actividades/service";
 import { cancelarInscripcionEvento, crearEvento, eliminarEvento } from "@/modules/calendario/eventos.service";
 import { reprogramarClase, restablecerClase, suspenderClase } from "@/modules/calendario/service";
 import { generarCargosPeriodo } from "@/modules/cuenta-corriente/cargos.service";
@@ -61,11 +61,13 @@ describe("generación de cargos", () => {
 });
 
 describe("clases", () => {
-  it("suspender, reprogramar y restablecer avisan solo a los inscriptos", async () => {
+  it("suspender, reprogramar y restablecer avisan solo a quienes reservaron esa clase", async () => {
     const act = await f.crearActividad(club.id, { nombre: "Natación", horarios: [{ diaSemana: 3, hora: "19:00" }] });
     const { socio, usuario } = await f.crearSocioConUsuario(club.id);
     const { usuario: otro } = await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, socio.id);
+    await f.reservarDirecto(club.id, act.id, socio.id, { fecha: dia(2026, 10, 21), hora: "19:00" });
+    await f.reservarDirecto(club.id, act.id, socio.id, { fecha: dia(2026, 10, 28), hora: "19:00" });
+    await f.reservarDirecto(club.id, act.id, (await f.crearSocio(club.id)).id, { fecha: dia(2026, 11, 4), hora: "19:00" });
 
     const e = await suspenderClase(club.id, { actividadId: act.id, fecha: "2026-10-21", hora: "19:00", motivo: "Feriado" }, hoy);
     await restablecerClase(club.id, e.id, hoy);
@@ -91,10 +93,10 @@ describe("actividades", () => {
     expect(await titulos(usuario.id)).toEqual(["Nueva actividad: Funcional"]);
   });
 
-  it("cambiar horarios o fechas avisa a los inscriptos; cambiar solo el nombre no", async () => {
+  it("cambiar horarios o fechas avisa a quienes participan; cambiar solo el nombre no", async () => {
     const act = await f.crearActividad(club.id, { nombre: "Funcional", horarios: [{ diaSemana: 1, hora: "19:00" }], fechaInicio: dia(2026, 10, 1) });
     const { socio, usuario } = await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, socio.id);
+    await f.reservarDirecto(club.id, act.id, socio.id, { fecha: dia(2026, 10, 19), hora: "19:00" });
 
     await editarActividad(club.id, act.id, { ...form, nombre: "Funcional adultos" }, hoy);
     expect(await titulos(usuario.id)).toEqual([]);
@@ -102,39 +104,24 @@ describe("actividades", () => {
     expect(await titulos(usuario.id)).toEqual(["Cambió el horario de Funcional"]);
   });
 
-  it("subir el cupo de una actividad llena avisa a la lista de espera", async () => {
+  it("subir el cupo avisa a la lista de espera de las clases que estaban llenas", async () => {
     const act = await f.crearActividad(club.id, { nombre: "Yoga", cupo: 1, fechaInicio: dia(2026, 10, 1) });
-    await f.inscribirDirecto(club.id, act.id, (await f.crearSocio(club.id)).id);
+    const clase = { fecha: dia(2026, 10, 19), hora: "18:00" };
+    await f.reservarDirecto(club.id, act.id, (await f.crearSocio(club.id)).id, clase);
     const { socio, usuario } = await f.crearSocioConUsuario(club.id);
-    await f.anotarEsperaDirecto(club.id, socio.id, { actividadId: act.id });
+    await f.anotarEsperaDirecto(club.id, socio.id, { actividadId: act.id, ...clase });
 
     await editarActividad(club.id, act.id, { ...form, nombre: "Yoga", cupo: "2", h_0_hora: "18:00" }, hoy);
-    expect(await titulos(usuario.id)).toEqual(["Se liberó un lugar en Yoga"]);
-  });
-
-  it("cancelar en una actividad llena avisa a la lista de espera; si no estaba llena, no", async () => {
-    const act = await f.crearActividad(club.id, { nombre: "Yoga", cupo: 2 });
-    const [a, b] = [await f.crearSocio(club.id), await f.crearSocio(club.id)];
-    const { socio: espera, usuario } = await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, a.id);
-    await f.anotarEsperaDirecto(club.id, espera.id, { actividadId: act.id });
-
-    await cancelarInscripcion(club.id, act.id, a.id, hoy); // no estaba llena
-    expect(await titulos(usuario.id)).toEqual([]);
-
-    await f.inscribirDirecto(club.id, act.id, a.id);
-    await f.inscribirDirecto(club.id, act.id, b.id);
-    await cancelarInscripcion(club.id, act.id, b.id, hoy); // estaba llena
     expect(await titulos(usuario.id)).toEqual(["Se liberó un lugar en Yoga"]);
   });
 });
 
 describe("eventos", () => {
-  it("un evento nuevo avisa a todo el club o a los inscriptos de su actividad; eliminarlo avisa a la misma audiencia", async () => {
+  it("un evento nuevo avisa a todo el club o a quienes participan de su actividad; eliminarlo avisa a la misma audiencia", async () => {
     const act = await f.crearActividad(club.id);
     const { socio, usuario: inscripto } = await f.crearSocioConUsuario(club.id);
     const { usuario: otro } = await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, socio.id);
+    await f.reservarDirecto(club.id, act.id, socio.id);
 
     await crearEvento(club.id, { titulo: "Asamblea", fecha: "2026-10-20", hora: "20:00", lugar: "Sede" }, hoy);
     const clinica = await crearEvento(club.id, { titulo: "Clínica", fecha: "2026-10-20", hora: "10:00", actividadId: act.id }, hoy);

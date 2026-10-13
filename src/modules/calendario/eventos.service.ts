@@ -2,7 +2,7 @@
 // cupo (null = sin límite) y precio (cargo único en la cuenta corriente).
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
-import { inicioDelDia } from "@/lib/periodo";
+import { DIA_MS, inicioDelDia } from "@/lib/periodo";
 import { anularCargosEvento, cargoPorEvento } from "@/modules/cuenta-corriente/cargos.service";
 import { notificar } from "@/modules/notificaciones/emitir";
 import { eventoSchema } from "./schema";
@@ -57,14 +57,21 @@ export function obtenerEvento(clubId: string, eventoId: string) {
   });
 }
 
-/** Condición de los eventos que ve un socio: los de todo el club y los de sus actividades. */
-async function visiblesPara(clubId: string, socioId: string) {
-  const inscripciones = await db.inscripcion.findMany({ where: { clubId, socioId }, select: { actividadId: true } });
-  return { OR: [{ actividadId: null }, { actividadId: { in: inscripciones.map((i) => i.actividadId) } }] };
+/**
+ * Condición de los eventos que ve un socio: los de todo el club y los de las actividades en las
+ * que participa (alguna reserva desde hace 30 días en adelante).
+ */
+async function visiblesPara(clubId: string, socioId: string, hoy: Date = new Date()) {
+  const participa = await db.reserva.findMany({
+    where: { clubId, socioId, fecha: { gte: new Date(inicioDelDia(hoy).getTime() - 30 * DIA_MS) } },
+    select: { actividadId: true },
+    distinct: ["actividadId"],
+  });
+  return { OR: [{ actividadId: null }, { actividadId: { in: participa.map((r) => r.actividadId) } }] };
 }
 
 export async function inscribirEvento(clubId: string, eventoId: string, socioId: string, hoy: Date = new Date()) {
-  const visibles = await visiblesPara(clubId, socioId);
+  const visibles = await visiblesPara(clubId, socioId, hoy);
   return db.$transaction(
     async (tx) => {
       const evento = await tx.evento.findFirst({
@@ -112,7 +119,7 @@ export async function cancelarInscripcionEvento(clubId: string, eventoId: string
 /** Próximos eventos que le corresponden al socio, marcando inscripción y lista de espera. */
 export async function eventosParaSocio(clubId: string, socioId: string, hoy: Date = new Date()) {
   const eventos = await db.evento.findMany({
-    where: { clubId, fecha: { gte: inicioDelDia(hoy) }, ...(await visiblesPara(clubId, socioId)) },
+    where: { clubId, fecha: { gte: inicioDelDia(hoy) }, ...(await visiblesPara(clubId, socioId, hoy)) },
     orderBy: [{ fecha: "asc" }, { hora: "asc" }],
     include: {
       actividad: { select: { nombre: true } },

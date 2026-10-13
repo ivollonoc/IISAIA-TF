@@ -2,19 +2,20 @@ import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { formatDiaCorto, formatPesos } from "@/lib/format";
 import { inicioDelDia } from "@/lib/periodo";
-import { actividadesParaSocio } from "@/modules/actividades/service";
 import { formatHorarios } from "@/modules/calendario/components/etiquetas";
 import { eventosParaSocio } from "@/modules/calendario/eventos.service";
-import { horaFin } from "@/modules/calendario/reglas";
+import { claveDia, horaFin } from "@/modules/calendario/reglas";
 import {
   anotarEsperaAction,
-  cancelarActividadAction,
   cancelarEventoAction,
-  inscribirActividadAction,
+  cancelarReservaAction,
   inscribirEventoAction,
+  reservarClaseAction,
+  reservarSerieAction,
   salirEsperaAction,
 } from "@/modules/calendario/socio.actions";
-import { Aviso, Badge, Boton, Card, Tabla, Titulo, type SearchParams } from "@/components/ui";
+import { clasesParaSocio } from "@/modules/reservas/service";
+import { Aviso, Badge, Boton, Card, Titulo, type SearchParams } from "@/components/ui";
 
 /** Botón de la acción que corresponde: cancelar, inscribirse, anotarse o salir de la lista de espera. */
 function AccionInscripcion({
@@ -25,7 +26,9 @@ function AccionInscripcion({
   cancelar,
   anotar,
   salir,
+  etiqueta = "Inscribirme",
 }: {
+  etiqueta?: string;
   inscripto: boolean;
   enEspera: boolean;
   lleno: boolean;
@@ -55,7 +58,7 @@ function AccionInscripcion({
     );
   return (
     <form action={inscribir}>
-      <Boton>Inscribirme</Boton>
+      <Boton>{etiqueta}</Boton>
     </form>
   );
 }
@@ -73,50 +76,81 @@ export default async function ActividadesSocioPage({
   const hoy = inicioDelDia(ahora);
   const socioId = user.socioId!;
   const [actividades, eventos, msg] = await Promise.all([
-    actividadesParaSocio(club.id, socioId, ahora),
+    clasesParaSocio(club.id, socioId, ahora, 14),
     eventosParaSocio(club.id, socioId, ahora),
     searchParams,
   ]);
 
   return (
     <>
-      <Titulo sub="Inscribite a las actividades y eventos del club">Actividades y eventos</Titulo>
+      <Titulo sub="Reservá tus clases (próximas 2 semanas) e inscribite a los eventos del club">Actividades y eventos</Titulo>
       <Aviso {...leerAviso(msg)} />
       <div className="flex flex-col gap-6">
-        <Card title="Actividades">
-          <Tabla headers={["Actividad", "Días y horarios", "Arancel", "Lugares", ""]}>
-            {actividades.map((a) => {
-              const lleno = a.inscriptos >= a.cupo;
-              return (
-                <tr key={a.id}>
-                  <td className="py-2 pr-4">
-                    <span className="font-medium">{a.nombre}</span>
-                    {a.inscripto && (
-                      <span className="ml-2">
-                        <Badge ok>Inscripto</Badge>
+        {actividades.map((a) => (
+          <Card key={a.id} title={a.nombre}>
+            <p className="text-sm text-slate-600">
+              {formatHorarios(a.horarios)} · {a.precioClase > 0 ? `${formatPesos(a.precioClase)} por clase` : "Gratis"} · cupo {a.cupo}
+            </p>
+            {a.descripcion && <p className="text-sm text-slate-500">{a.descripcion}</p>}
+            {a.clases.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">No hay clases en las próximas 2 semanas.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-slate-100">
+                {a.clases.map((c) => {
+                  const fecha = claveDia(c.fecha);
+                  const lleno = c.reservas >= a.cupo;
+                  return (
+                    <li key={`${fecha}${c.hora}`} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                      <span className={c.estado === "SUSPENDIDA" ? "text-red-700 line-through" : "text-slate-700"}>
+                        <strong>{formatDiaCorto(c.fecha)}</strong> {c.hora}–{c.horaFin}
+                        {c.destino && <span className="text-amber-700"> → {formatDiaCorto(c.destino.fecha)} {c.destino.hora}</span>}
+                        {c.reservada && <span className="ml-2 no-underline"><Badge ok>Reservada</Badge></span>}
                       </span>
-                    )}
-                    {a.descripcion && <p className="text-xs text-slate-500">{a.descripcion}</p>}
-                  </td>
-                  <td className="py-2 pr-4">{formatHorarios(a.horarios)}</td>
-                  <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
-                  <td className="py-2 pr-4">{lleno ? "Completo" : `${a.cupo - a.inscriptos} de ${a.cupo}`}</td>
-                  <td className="py-2 text-right">
-                    <AccionInscripcion
-                      inscripto={a.inscripto}
-                      enEspera={a.enEspera}
-                      lleno={lleno}
-                      inscribir={inscribirActividadAction.bind(null, slug, a.id)}
-                      cancelar={cancelarActividadAction.bind(null, slug, a.id)}
-                      anotar={anotarEsperaAction.bind(null, slug, "actividad", a.id)}
-                      salir={salirEsperaAction.bind(null, slug, "actividad", a.id)}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </Tabla>
-        </Card>
+                      {c.estado === "SUSPENDIDA" ? (
+                        <span className="text-xs text-red-700">Suspendida{c.motivo ? `: ${c.motivo}` : ""}</span>
+                      ) : (
+                        <span className="flex items-center gap-3">
+                          <span className={`text-xs ${lleno ? "text-amber-700" : "text-slate-500"}`}>
+                            {lleno ? "Completa" : `${a.cupo - c.reservas} de ${a.cupo} lugares`}
+                          </span>
+                          <AccionInscripcion
+                            inscripto={c.reservada}
+                            enEspera={c.enEspera}
+                            lleno={lleno}
+                            etiqueta="Reservar"
+                            inscribir={reservarClaseAction.bind(null, slug, a.id, fecha, c.hora)}
+                            cancelar={cancelarReservaAction.bind(null, slug, a.id, fecha, c.hora)}
+                            anotar={anotarEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
+                            salir={salirEsperaAction.bind(null, slug, "clase", a.id, fecha, c.hora)}
+                          />
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <form action={reservarSerieAction.bind(null, slug, a.id)} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 text-sm">
+              <span className="self-center text-slate-600">Reservar todas las de</span>
+              <select name="horario" aria-label="Horario" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                {a.horarios.map((h) => (
+                  <option key={`${h.diaSemana}|${h.hora}`} value={`${h.diaSemana}|${h.hora}`}>
+                    {formatHorarios([h])}
+                  </option>
+                ))}
+              </select>
+              <span className="self-center text-slate-600">por</span>
+              <select name="semanas" defaultValue="4" aria-label="Semanas" className="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                {[1, 2, 4, 8, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? "semana" : "semanas"}
+                  </option>
+                ))}
+              </select>
+              <Boton variante="secundario">Reservar</Boton>
+            </form>
+          </Card>
+        ))}
 
         <Card title="Próximos eventos">
           {eventos.length === 0 ? (
@@ -134,7 +168,7 @@ export default async function ActividadesSocioPage({
                       <p className="text-slate-600">
                         {formatDiaCorto(e.fecha)} · {e.hora}–{horaFin(e.hora, e.duracionMin)}
                         {e.lugar && ` · ${e.lugar}`}
-                        {e.actividad && ` · Para inscriptos de ${e.actividad.nombre}`}
+                        {e.actividad && ` · Para quienes van a ${e.actividad.nombre}`}
                       </p>
                       {e.descripcion && <p className="text-slate-500">{e.descripcion}</p>}
                       {e.conInscripcion && (

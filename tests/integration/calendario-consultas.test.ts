@@ -63,7 +63,7 @@ describe("calendarioClub", () => {
 describe("calendarioSocio", () => {
   it("muestra solo sus actividades y los eventos del club o de sus actividades", async () => {
     const socio = await f.crearSocio(club.id);
-    await f.inscribirDirecto(club.id, natacion.id, socio.id);
+    await f.reservarDirecto(club.id, natacion.id, socio.id, { fecha: dia(2026, 10, 14), hora: "19:00" });
     await f.crearEvento(club.id, { titulo: "Asamblea", fecha: dia(2026, 10, 13) });
     await f.crearEvento(club.id, { titulo: "Clínica de natación", fecha: dia(2026, 10, 15), actividadId: natacion.id });
     await f.crearEvento(club.id, { titulo: "Retiro de yoga", fecha: dia(2026, 10, 16), actividadId: yoga.id });

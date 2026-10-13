@@ -1,21 +1,25 @@
-// Lista de espera de actividades y eventos llenos. Anotarse no reserva nada: cuando se libera un
-// lugar se avisa a todos los de la lista y se inscribe el primero que llega.
+// Lista de espera de clases y eventos llenos. Anotarse no reserva nada: cuando se libera un
+// lugar se avisa a todos los de la lista y reserva el primero que llega.
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 import { inicioDelDia } from "@/lib/periodo";
+import { claseVigente } from "@/modules/reservas/service";
 
-export type RefEspera = { actividadId: string; eventoId?: undefined } | { eventoId: string; actividadId?: undefined };
+export type RefEspera =
+  | { actividadId: string; fecha: Date; hora: string; eventoId?: undefined }
+  | { eventoId: string; actividadId?: undefined; fecha?: undefined; hora?: undefined };
 
-/** Verifica que el destino esté lleno y que el socio no esté inscripto. */
+/** Verifica que la clase o el evento estén llenos y que el socio no tenga lugar ya. */
 async function verificarLleno(clubId: string, socioId: string, ref: RefEspera, hoy: Date) {
   if (ref.actividadId) {
-    const a = await db.actividad.findFirst({
-      where: { id: ref.actividadId, clubId, activa: true },
-      include: { _count: { select: { inscripciones: true } }, inscripciones: { where: { socioId }, select: { id: true } } },
-    });
-    if (!a) throw new DomainError("Actividad no encontrada");
-    if (a.inscripciones.length) throw new DomainError("Ya estás inscripto");
-    if (a._count.inscripciones < a.cupo) throw new DomainError("Todavía hay lugar: inscribite directamente");
+    const actividad = await claseVigente(db, clubId, ref.actividadId, ref.fecha, ref.hora, hoy);
+    const clase = { actividadId: ref.actividadId, fecha: ref.fecha, hora: ref.hora };
+    const [ocupados, mia] = await Promise.all([
+      db.reserva.count({ where: clase }),
+      db.reserva.findFirst({ where: { ...clase, socioId }, select: { id: true } }),
+    ]);
+    if (mia) throw new DomainError("Ya reservaste esta clase");
+    if (ocupados < actividad.cupo) throw new DomainError("Todavía hay lugar: reservá directamente");
     return;
   }
   const ev = await db.evento.findFirst({

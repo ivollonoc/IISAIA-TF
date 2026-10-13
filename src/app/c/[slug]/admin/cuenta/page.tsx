@@ -33,7 +33,7 @@ export default async function CuentaClubPage({
               <option value={siguiente}>{siguiente} (siguiente)</option>
             </Selector>
             <p className="text-sm text-slate-500">
-              Crea la cuota social de cada socio activo y el arancel de sus actividades. Vencen el día{" "}
+              Crea la cuota social de cada socio activo (las clases se cobran al reservarlas). Vencen el día{" "}
               {club.diaVencimiento}. Si ya existen, no se duplican.
             </p>
             <Boton type="submit">Generar cargos</Boton>

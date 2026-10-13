@@ -116,7 +116,7 @@ describe("inscribirEvento", () => {
     const ev = await evento({ actividadId: act.id });
     const s = await socio();
     await expect(inscribirEvento(club.id, ev.id, s.id, hoy)).rejects.toThrow("Evento no encontrado");
-    await f.inscribirDirecto(club.id, act.id, s.id);
+    await f.reservarDirecto(club.id, act.id, s.id);
     await expect(inscribirEvento(club.id, ev.id, s.id, hoy)).resolves.toEqual({ cargo: null });
   });
 
@@ -193,7 +193,7 @@ describe("consultas", () => {
     const act = await f.crearActividad(club.id);
     const otraAct = await f.crearActividad(club.id);
     const s = await socio();
-    await f.inscribirDirecto(club.id, act.id, s.id);
+    await f.reservarDirecto(club.id, act.id, s.id);
     const cena = await evento({ titulo: "Cena", fecha: dia(2026, 10, 24), cupo: 1 });
     await f.inscribirEventoDirecto(club.id, cena.id, (await socio()).id);
     await f.anotarEsperaDirecto(club.id, s.id, { eventoId: cena.id });

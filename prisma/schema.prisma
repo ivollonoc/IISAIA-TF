@@ -27,7 +27,7 @@ enum MedioPago {
 
 enum ConceptoCargo {
   CUOTA
-  ACTIVIDAD
+  CLASE
   EVENTO
 }
 
@@ -61,7 +61,7 @@ model Club {
   socios              Socio[]
   pagos               Pago[]
   actividades         Actividad[]
-  inscripciones       Inscripcion[]
+  reservas            Reserva[]
   cargos              Cargo[]
   intentosPago        IntentoPago[]
   excepcionesClase    ExcepcionClase[]
@@ -154,7 +154,7 @@ model Socio {
   activo              Boolean             @default(true)
   createdAt           DateTime            @default(now())
   pagos               Pago[]              @relation("PagosDelSocio")
-  inscripciones       Inscripcion[]
+  reservas            Reserva[]
   cargos              Cargo[]
   intentosPago        IntentoPago[]
   inscripcionesEvento InscripcionEvento[]
@@ -188,23 +188,23 @@ model Pago {
 
 // Actividad recurrente: clases semanales según sus horarios, entre fechaInicio y fechaFin.
 model Actividad {
-  id            String             @id @default(cuid())
-  clubId        String
-  club          Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  nombre        String
-  descripcion   String?
-  cupo          Int
-  arancel       Int                @default(0) // pesos por mes; 0 = gratuita
-  fechaInicio   DateTime // medianoche UTC; las clases empiezan ese día
-  fechaFin      DateTime? // medianoche UTC, inclusive; null = sin fin
-  createdAt     DateTime           @default(now())
-  activa        Boolean            @default(true)
-  horarios      HorarioActividad[]
-  inscripciones Inscripcion[]
-  cargos        Cargo[]
-  excepciones   ExcepcionClase[]
-  eventos       Evento[]
-  listaEspera   ListaEspera[]
+  id          String             @id @default(cuid())
+  clubId      String
+  club        Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  nombre      String
+  descripcion String?
+  cupo        Int
+  precioClase Int                @default(0) // pesos por clase reservada; 0 = gratis
+  fechaInicio DateTime // medianoche UTC; las clases empiezan ese día
+  fechaFin    DateTime? // medianoche UTC, inclusive; null = sin fin
+  createdAt   DateTime           @default(now())
+  activa      Boolean            @default(true)
+  horarios    HorarioActividad[]
+  reservas    Reserva[]
+  cargos      Cargo[]
+  excepciones ExcepcionClase[]
+  eventos     Evento[]
+  listaEspera ListaEspera[]
 
   @@index([clubId])
 }
@@ -222,7 +222,8 @@ model HorarioActividad {
   @@unique([actividadId, diaSemana, hora])
 }
 
-model Inscripcion {
+// Reserva de un socio a una clase concreta (actividad, fecha, hora original de la clase).
+model Reserva {
   id          String    @id @default(cuid())
   clubId      String
   club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
@@ -230,13 +231,16 @@ model Inscripcion {
   actividad   Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   socioId     String
   socio       Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  fecha       DateTime // día de la clase (medianoche UTC)
+  hora        String // hora original de la clase "HH:MM"
   createdAt   DateTime  @default(now())
 
-  @@unique([actividadId, socioId])
-  @@index([clubId])
+  @@unique([actividadId, fecha, hora, socioId])
+  @@index([clubId, fecha])
+  @@index([socioId, fecha])
 }
 
-// Deuda del socio: cuota social del período o arancel de una actividad.
+// Deuda del socio: cuota social del período, una clase reservada o un evento.
 model Cargo {
   id              String        @id @default(cuid())
   clubId          String
@@ -246,7 +250,7 @@ model Cargo {
   concepto        ConceptoCargo
   actividadId     String?
   actividad       Actividad?    @relation(fields: [actividadId], references: [id], onDelete: SetNull)
-  clave           String // "CUOTA" | "ACT:<actividadId>" (NULL en actividadId no sirve para UNIQUE)
+  clave           String // "CUOTA" | "CLA:<actividadId>:<fecha>:<hora>" | "EVT:<eventoId>"
   descripcion     String // se conserva aunque se borre la actividad
   periodo         String // "YYYY-MM"
   monto           Int
@@ -345,7 +349,7 @@ model InscripcionEvento {
   @@index([clubId])
 }
 
-// Lista de espera de una actividad o de un evento llenos (exactamente uno de los dos).
+// Lista de espera de una clase llena (actividad + fecha + hora) o de un evento lleno.
 model ListaEspera {
   id          String     @id @default(cuid())
   clubId      String
@@ -354,11 +358,13 @@ model ListaEspera {
   socio       Socio      @relation(fields: [socioId], references: [id], onDelete: Cascade)
   actividadId String?
   actividad   Actividad? @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  fecha       DateTime? // clase en espera (solo actividades)
+  hora        String?
   eventoId    String?
   evento      Evento?    @relation(fields: [eventoId], references: [id], onDelete: Cascade)
   createdAt   DateTime   @default(now())
 
-  @@unique([socioId, actividadId])
+  @@unique([socioId, actividadId, fecha, hora])
   @@unique([socioId, eventoId])
   @@index([clubId])
 }

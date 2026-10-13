@@ -63,12 +63,12 @@ describe("bandeja", () => {
 });
 
 describe("avisos manuales", () => {
-  it("el admin de club avisa a todos o a los inscriptos de una actividad", async () => {
+  it("el admin de club avisa a todos o a los participantes de una actividad", async () => {
     const club = await f.crearClub();
     const act = await f.crearActividad(club.id);
     const { socio, usuario: inscripto } = await f.crearSocioConUsuario(club.id);
     const { usuario: otro } = await f.crearSocioConUsuario(club.id);
-    await f.inscribirDirecto(club.id, act.id, socio.id);
+    await f.reservarDirecto(club.id, act.id, socio.id);
 
     expect(await enviarAvisoClub(club.id, { asunto: "Pileta cerrada", mensaje: "Por mantenimiento", actividadId: act.id })).toEqual({
       destinatarios: 1,
@@ -119,7 +119,7 @@ describe("canales y buzón", () => {
 
     const h = await historialAvisos("CLUB", c1.id);
     expect(h.map((a) => [a.asunto, a.para, a.destinatarios, a.canales])).toEqual([
-      ["Yoga", "Inscriptos de Yoga", 0, ["IN_APP", "EMAIL"]],
+      ["Yoga", "Participantes de Yoga", 0, ["IN_APP", "EMAIL"]],
       ["General", "Todos los socios", 1, ["IN_APP", "EMAIL"]],
     ]);
     expect(h[0].autorId).toBe(admin.id);

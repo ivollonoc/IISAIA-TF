@@ -21,6 +21,7 @@ import { obtenerEvento, proximosEventosClub } from "@/modules/calendario/eventos
 import { claveDia, horaFin, parsearDia, semanaDe, semanasDelMes, type ItemCalendario } from "@/modules/calendario/reglas";
 import { calendarioClub, claveClase, obtenerClase } from "@/modules/calendario/service";
 import { hrefAgenda, vistaDeParams } from "@/modules/calendario/vista";
+import { clasesParaSocio, esperaDeClase, reservasDeClase } from "@/modules/reservas/service";
 import { Aviso, Boton, Card, Tabla, Titulo } from "@/components/ui";
 
 type Params = {
@@ -70,6 +71,12 @@ export default async function AgendaAdminPage({
     sp.actividad ? obtenerActividad(club.id, sp.actividad) : null,
   ]);
 
+  const [reservasClase, esperaClase, proximasClases] = await Promise.all([
+    clase ? reservasDeClase(club.id, clase.actividad.id, clase.fecha, clase.horario.hora) : [],
+    clase ? esperaDeClase(club.id, clase.actividad.id, clase.fecha, clase.horario.hora) : [],
+    actividad ? clasesParaSocio(club.id, "", ahora, 14).then((as) => as.find((a) => a.id === actividad.id)?.clases ?? []) : [],
+  ]);
+
   const hrefItem = (i: ItemCalendario) =>
     i.tipo === "EVENTO"
       ? href({ evento: i.eventoId! })
@@ -102,7 +109,7 @@ export default async function AgendaAdminPage({
               <div className="flex flex-col gap-6">
                 <div>
                   <h3 className="mb-2 font-semibold text-slate-800">Actividades</h3>
-                  <Tabla headers={["Actividad", "Días y horarios", "Vigencia", "Arancel", "Inscriptos", "En espera"]}>
+                  <Tabla headers={["Actividad", "Días y horarios", "Vigencia", "Precio por clase", "Cupo por clase", "En espera"]}>
                     {actividades.map((a) => (
                       <tr key={a.id} className={a.activa ? "" : "text-slate-400"}>
                         <td className="py-2 pr-4 font-medium">
@@ -113,10 +120,8 @@ export default async function AgendaAdminPage({
                         </td>
                         <td className="py-2 pr-4">{formatHorarios(a.horarios)}</td>
                         <td className="py-2 pr-4">{vigencia(a)}</td>
-                        <td className="py-2 pr-4">{a.arancel > 0 ? `${formatPesos(a.arancel)}/mes` : "Gratis"}</td>
-                        <td className="py-2 pr-4">
-                          {a._count.inscripciones} / {a.cupo}
-                        </td>
+                        <td className="py-2 pr-4">{a.precioClase > 0 ? formatPesos(a.precioClase) : "Gratis"}</td>
+                        <td className="py-2 pr-4">{a.cupo}</td>
                         <td className="py-2 pr-4">{a._count.listaEspera || "—"}</td>
                       </tr>
                     ))}
@@ -166,6 +171,18 @@ export default async function AgendaAdminPage({
                 Ver actividad
               </Link>
               {!clase.excepcion && <p className="mt-1 text-sm text-slate-500">{estadoClase(null)}</p>}
+              <div className="mt-3 text-sm">
+                <p className="font-medium text-slate-700">
+                  Reservas: {reservasClase.length} / {clase.actividad.cupo}
+                </p>
+                <ListaSocios socios={reservasClase.map((r) => r.socio)} vacio="Nadie reservó esta clase todavía." />
+                {esperaClase.length > 0 && (
+                  <>
+                    <p className="mt-2 font-medium text-slate-700">En lista de espera: {esperaClase.length}</p>
+                    <ListaSocios socios={esperaClase.map((r) => r.socio)} />
+                  </>
+                )}
+              </div>
               {clase.excepcion ? (
                 <div className="mt-3 flex flex-col gap-3 text-sm">
                   <p className="text-slate-600">{estadoClase(clase.excepcion)}</p>
@@ -222,7 +239,7 @@ export default async function AgendaAdminPage({
               {evento.lugar && <p className="text-sm text-slate-600">Lugar: {evento.lugar}</p>}
               {evento.descripcion && <p className="text-sm text-slate-600">{evento.descripcion}</p>}
               <p className="text-sm text-slate-500">
-                Para: {evento.actividad ? `inscriptos de ${evento.actividad.nombre}` : "todo el club"}
+                Para: {evento.actividad ? `quienes participan de ${evento.actividad.nombre}` : "todo el club"}
               </p>
               {evento.conInscripcion ? (
                 <div className="mt-3 text-sm">
@@ -254,19 +271,31 @@ export default async function AgendaAdminPage({
             <Card title={actividad.nombre}>
               <p className="text-sm text-slate-700">{formatHorarios(actividad.horarios)}</p>
               <p className="text-sm text-slate-500">
-                {vigencia(actividad)} · {actividad.arancel > 0 ? `${formatPesos(actividad.arancel)}/mes` : "Gratis"}
+                {vigencia(actividad)} · Cupo {actividad.cupo} por clase ·{" "}
+                {actividad.precioClase > 0 ? `${formatPesos(actividad.precioClase)} por clase` : "Gratis"}
               </p>
               {actividad.descripcion && <p className="mt-1 text-sm text-slate-600">{actividad.descripcion}</p>}
               <div className="mt-3 text-sm">
-                <p className="font-medium text-slate-700">
-                  Inscriptos: {actividad.inscripciones.length} / {actividad.cupo}
-                </p>
-                <ListaSocios socios={actividad.inscripciones.map((i) => i.socio)} vacio="Todavía no hay inscriptos." />
-                {actividad.listaEspera.length > 0 && (
-                  <>
-                    <p className="mt-2 font-medium text-slate-700">En lista de espera: {actividad.listaEspera.length}</p>
-                    <ListaSocios socios={actividad.listaEspera.map((i) => i.socio)} />
-                  </>
+                <p className="font-medium text-slate-700">Próximas clases</p>
+                {proximasClases.length === 0 ? (
+                  <p className="text-slate-500">No hay clases en las próximas 2 semanas.</p>
+                ) : (
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {proximasClases.map((c) => (
+                      <li key={`${claveDia(c.fecha)}${c.hora}`} className="flex justify-between gap-3">
+                        <Link
+                          href={href({ clase: claveClase(actividad.id, claveDia(c.fecha), c.hora) })}
+                          className={`hover:underline ${c.estado === "SUSPENDIDA" ? "text-red-700 line-through" : "text-slate-600"}`}
+                        >
+                          {formatDiaCorto(c.fecha)} {c.hora}
+                          {c.estado === "REPROGRAMADA" && c.destino && ` → ${formatDiaCorto(c.destino.fecha)} ${c.destino.hora}`}
+                        </Link>
+                        <span className={c.reservas >= actividad.cupo ? "font-medium text-amber-700" : "text-slate-500"}>
+                          {c.reservas} / {actividad.cupo}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
               <details className="mt-4 border-t border-slate-100 pt-3">
@@ -305,7 +334,7 @@ export default async function AgendaAdminPage({
             </div>
             <p className="mb-3 text-xs text-slate-500">
               {nuevo === "actividad"
-                ? "Se repite todas las semanas en los días elegidos, con inscripción mensual."
+                ? "Se repite todas las semanas en los horarios elegidos; los socios reservan cada clase."
                 : "Sucede una sola vez. Puede ser informativo o con inscripción (cupo y precio opcionales)."}
             </p>
             {nuevo === "actividad" ? (

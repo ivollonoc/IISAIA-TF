@@ -13,7 +13,7 @@ export function mensajeDeError(e: unknown): string | null {
   }
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
     if (e.code === "P2002") return "Ya existe un registro con esos datos";
-    // Conflicto de transacción serializable (p. ej. dos inscripciones al último cupo).
+    // Conflicto de transacción serializable (p. ej. dos reservas al último lugar de una clase).
     if (e.code === "P2034") return "Hubo un conflicto con otra operación, intentá de nuevo";
   }
   return null;

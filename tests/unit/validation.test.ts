@@ -75,16 +75,16 @@ describe("actividadSchema", () => {
     expect(actividadSchema.safeParse({ ...conHorario, h_0_dur: "10" }).success).toBe(false);
   });
 
-  it("rechaza cupo 0, arancel negativo y fin anterior al inicio", () => {
+  it("rechaza cupo 0, precio negativo y fin anterior al inicio", () => {
     expect(actividadSchema.safeParse({ ...conHorario, cupo: 0 }).success).toBe(false);
-    expect(actividadSchema.safeParse({ ...conHorario, arancel: -1 }).success).toBe(false);
+    expect(actividadSchema.safeParse({ ...conHorario, precioClase: -1 }).success).toBe(false);
     expect(errores({ ...conHorario, fechaFin: "2026-09-30" })).toContain("La fecha de fin no puede ser anterior al inicio");
     expect(actividadSchema.parse({ ...conHorario, fechaFin: "2026-10-01" }).fechaFin).toEqual(new Date(Date.UTC(2026, 9, 1)));
   });
 
-  it("el arancel es opcional (gratuita) y se convierte desde texto", () => {
-    expect(actividadSchema.parse(conHorario).arancel).toBe(0);
-    expect(actividadSchema.parse({ ...conHorario, arancel: "5000" }).arancel).toBe(5000);
+  it("el precio por clase es opcional (gratis) y se convierte desde texto", () => {
+    expect(actividadSchema.parse(conHorario).precioClase).toBe(0);
+    expect(actividadSchema.parse({ ...conHorario, precioClase: "1500" }).precioClase).toBe(1500);
   });
 });
 

@@ -21,18 +21,25 @@ export const todosLosSocios = (clubId: string) => deSocios({ clubId });
 
 export const sociosPorId = (clubId: string, ids: string[]) => deSocios({ clubId, id: { in: ids } });
 
-export const inscriptosActividad = (clubId: string, actividadId: string) =>
-  deSocios({ clubId, inscripciones: { some: { actividadId } } });
+/** Quienes reservaron una clase concreta. */
+export const reservasDeLaClase = (clubId: string, actividadId: string, fecha: Date, hora: string) =>
+  deSocios({ clubId, reservas: { some: { actividadId, fecha, hora } } });
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+/** Participantes de una actividad: socios con alguna reserva en ella desde hace 30 días en adelante. */
+export const participantesActividad = (clubId: string, actividadId: string, hoy: Date = new Date()) =>
+  deSocios({ clubId, reservas: { some: { actividadId, fecha: { gte: new Date(hoy.getTime() - 30 * DIA_MS) } } } });
 
 export const inscriptosEvento = (clubId: string, eventoId: string) =>
   deSocios({ clubId, inscripcionesEvento: { some: { eventoId } } });
 
-export const enListaDeEspera = (clubId: string, ref: { actividadId?: string; eventoId?: string }) =>
+export const enListaDeEspera = (clubId: string, ref: { actividadId?: string; fecha?: Date; hora?: string; eventoId?: string }) =>
   deSocios({ clubId, listaEspera: { some: ref } });
 
-/** Audiencia de un evento o aviso: todo el club o los inscriptos de una actividad. */
+/** Audiencia de un evento o aviso: todo el club o los participantes de una actividad. */
 export const audiencia = (clubId: string, actividadId: string | null) =>
-  actividadId ? inscriptosActividad(clubId, actividadId) : todosLosSocios(clubId);
+  actividadId ? participantesActividad(clubId, actividadId) : todosLosSocios(clubId);
 
 export async function adminsDeClub(clubId: string | null): Promise<Destinatario[]> {
   const admins = await db.usuario.findMany({

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { leerAviso } from "@/lib/aviso";
 import { requireClub } from "@/lib/session";
 import { obtenerSocio } from "@/modules/socios/service";
-import { actividadesParaSocio } from "@/modules/actividades/service";
 import { cuentaSocio } from "@/modules/cuenta-corriente/consultas.service";
 import { formatDia, formatPesos } from "@/lib/format";
 import { formatHorarios } from "@/modules/calendario/components/etiquetas";
@@ -24,14 +23,12 @@ export default async function SocioHomePage({
   const { club, user } = await requireClub(slug, "socio");
   const ahora = new Date();
   const hoy = inicioDelDia(ahora);
-  const [socio, actividades, cuenta, agenda, msg] = await Promise.all([
+  const [socio, cuenta, agenda, msg] = await Promise.all([
     obtenerSocio(club.id, user.socioId!),
-    actividadesParaSocio(club.id, user.socioId!, ahora),
     cuentaSocio(club.id, user.socioId!),
     calendarioSocio(club.id, user.socioId!, hoy, new Date(hoy.getTime() + 6 * DIA_MS)),
     searchParams,
   ]);
-  const mias = actividades.filter((a) => a.inscripto || a.enEspera);
 
   return (
     <>
@@ -76,30 +73,12 @@ export default async function SocioHomePage({
 
         <div className="lg:col-span-2">
           <Card title="Próximos 7 días">
-            <AgendaLista items={agenda} vacio="No tenés clases ni eventos en los próximos 7 días." />
+            <AgendaLista items={agenda} vacio="No tenés clases reservadas ni eventos en los próximos 7 días." />
             <Link href={`/c/${slug}/socio/calendario`} className="mt-4 inline-block text-sm text-emerald-700 underline">
               Ver calendario
-            </Link>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-3">
-          <Card title="Mis actividades">
-            {mias.length === 0 ? (
-              <p className="text-sm text-slate-500">Todavía no estás inscripto en ninguna actividad.</p>
-            ) : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {mias.map((a) => (
-                  <li key={a.id}>
-                    <span className="font-medium">{a.nombre}</span>{" "}
-                    <span className="text-slate-600">· {formatHorarios(a.horarios)}</span>
-                    {a.enEspera && <span className="ml-1 text-amber-700">(en lista de espera)</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Link href={`/c/${slug}/socio/actividades`} className="mt-3 inline-block text-sm text-emerald-700 underline">
-              Ver todas las actividades y eventos
+            </Link>{" "}
+            <Link href={`/c/${slug}/socio/actividades`} className="mt-4 ml-3 inline-block text-sm text-emerald-700 underline">
+              Reservar clases
             </Link>
           </Card>
         </div>

@@ -19,7 +19,6 @@ export async function obtenerSocio(clubId: string, socioId: string) {
     where: { id: socioId, clubId },
     include: {
       tipoSocio: true,
-      inscripciones: { include: { actividad: true } },
       titular: { select: { id: true, nombre: true, apellido: true } },
       _count: { select: { familiares: true } },
     },

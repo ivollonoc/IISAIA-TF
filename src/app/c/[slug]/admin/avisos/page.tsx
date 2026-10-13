@@ -38,7 +38,7 @@ export default async function AvisosClubPage({
                   .filter((a) => a.activa)
                   .map((a) => (
                     <option key={a.id} value={a.id}>
-                      Inscriptos de {a.nombre}
+                      Participantes de {a.nombre}
                     </option>
                   ))}
               </Selector>

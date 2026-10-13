@@ -16,10 +16,10 @@ export type EventoAviso =
     }
   | { tipo: "CLASE_RESTABLECIDA"; actividadId: string; fecha: Date; hora: string }
   | { tipo: "ACTIVIDAD_NUEVA"; actividadId: string }
-  | { tipo: "ACTIVIDAD_EDITADA"; actividadId: string }
+  | { tipo: "ACTIVIDAD_EDITADA"; actividadId: string; socioIds: string[] } // participantes antes del cambio
   | { tipo: "EVENTO_NUEVO"; eventoId: string }
   | { tipo: "EVENTO_CANCELADO"; titulo: string; fecha: Date; hora: string; actividadId: string | null }
-  | { tipo: "LUGAR_LIBERADO"; actividadId: string; eventoId?: undefined }
+  | { tipo: "LUGAR_LIBERADO"; actividadId: string; fecha: Date; hora: string; eventoId?: undefined }
   | { tipo: "LUGAR_LIBERADO"; eventoId: string; actividadId?: undefined }
   | { tipo: "AVISO_CLUB"; asunto: string; mensaje: string; actividadId: string | null };
 

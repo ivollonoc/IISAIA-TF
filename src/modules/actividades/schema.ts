@@ -33,7 +33,7 @@ export const actividadSchema = z.preprocess(
       nombre: texto(60),
       descripcion: opcional(500),
       cupo: entero(1, 500),
-      arancel: entero(0, 10_000_000).default(0),
+      precioClase: entero(0, 10_000_000).default(0),
       fechaInicio: dia,
       fechaFin: z.union([z.literal(""), z.null(), dia]).optional().transform((v) => v || null),
       horarios: z.array(horarioSchema).min(1, "Agregá al menos un horario").max(28),

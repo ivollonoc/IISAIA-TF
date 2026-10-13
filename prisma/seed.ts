@@ -4,8 +4,9 @@
 // Pagos en efectivo, transferencia y online.
 import { PrismaClient, type MedioPago, type Socio } from "@prisma/client";
 import { vencimiento } from "../src/modules/cuenta-corriente/reglas";
-import { DIA_MS, inicioDelDia } from "../src/lib/periodo";
-import { formatDia, formatPesos } from "../src/lib/format";
+import { DIA_MS, inicioDelDia, periodoActual } from "../src/lib/periodo";
+import { formatDia, formatDiaCorto, formatPesos } from "../src/lib/format";
+import { claveDia, clasesEnRango } from "../src/modules/calendario/reglas";
 import { calendarioDemo, escenarioDemo, fechasDemo } from "./escenario-demo";
 
 const prisma = new PrismaClient();
@@ -62,24 +63,17 @@ async function main() {
   await prisma.socio.update({ where: { id: valentina.id }, data: { titularId: martin.id } });
   const cuota = (s: Socio) => (s.tipoSocioId === activo.id ? activo.cuotaMensual : cadete.cuotaMensual);
 
-  const actividad = (nombre: string, cupo: number, arancel: number, horarios: { diaSemana: number; hora: string }[]) =>
+  const actividad = (nombre: string, cupo: number, precioClase: number, horarios: { diaSemana: number; hora: string }[]) =>
     prisma.actividad.create({
-      data: { clubId: club.id, nombre, cupo, arancel, fechaInicio: demo.creadas, horarios: { create: horarios } },
+      data: { clubId: club.id, nombre, cupo, precioClase, fechaInicio: demo.creadas, horarios: { create: horarios } },
+      include: { horarios: true },
     });
-  const futbol = await actividad("Fútbol infantil", 20, 6000, [{ diaSemana: 1, hora: "18:00" }]);
-  const natacion = await actividad("Natación", 2, 5000, [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 3, hora: "19:00" }]);
-  // Yoga gratis y lleno (Martín y Valentina): Lucía espera un lugar.
+  const futbol = await actividad("Fútbol infantil", 20, 1500, [{ diaSemana: 1, hora: "18:00" }]);
+  const natacion = await actividad("Natación", 2, 1250, [{ diaSemana: 1, hora: "19:00" }, { diaSemana: 3, hora: "19:00" }]);
   const yoga = await actividad("Yoga", 2, 0, [
     { diaSemana: 2, hora: "10:00" },
     { diaSemana: 4, hora: "10:00" },
   ]);
-
-  await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: futbol.id, socioId: sofia.id } });
-  await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: natacion.id, socioId: lucia.id } });
-  for (const s of [martin, valentina]) {
-    await prisma.inscripcion.create({ data: { clubId: club.id, actividadId: yoga.id, socioId: s.id } });
-  }
-  await prisma.listaEspera.create({ data: { clubId: club.id, actividadId: yoga.id, socioId: lucia.id } });
 
   // Cargos de dos meses, como los generaría el botón "Generar cargos".
   for (const periodo of [anterior, actual]) {
@@ -89,15 +83,6 @@ async function main() {
         data: {
           clubId: club.id, socioId: s.id, concepto: "CUOTA", clave: "CUOTA",
           descripcion: `Cuota social ${periodo}`, periodo, monto: cuota(s), vencimiento: vence,
-          createdAt: fechas.cargo(periodo),
-        },
-      });
-    }
-    for (const [s, a] of [[sofia, futbol], [lucia, natacion]] as const) {
-      await prisma.cargo.create({
-        data: {
-          clubId: club.id, socioId: s.id, concepto: "ACTIVIDAD", actividadId: a.id, clave: `ACT:${a.id}`,
-          descripcion: `${a.nombre} ${periodo}`, periodo, monto: a.arancel, vencimiento: vence,
           createdAt: fechas.cargo(periodo),
         },
       });
@@ -147,6 +132,42 @@ async function main() {
       nuevaFecha: demo.futbol.reprogramada.nuevaFecha, nuevaHora: "19:00", motivo: "Cancha ocupada",
     },
   });
+  // Reservas de las próximas clases (las que todavía no empezaron): Lucía va a Natación; Sofía,
+  // a Fútbol (incluye la clase suspendida y la reprogramada); Martín y Valentina llenan la próxima
+  // clase de Yoga y Lucía queda en su lista de espera. Las clases pagas generan su cargo.
+  const ahora = Date.now();
+  const proximas = (a: typeof natacion, n: number) =>
+    clasesEnRango(a, hoyDia, new Date(hoyDia.getTime() + 28 * DIA_MS))
+      .filter(({ fecha, horario }) => {
+        const [h, m] = horario.hora.split(":").map(Number);
+        return fecha.getTime() + (h + 3) * 3_600_000 + m * 60_000 > ahora;
+      })
+      .slice(0, n);
+  async function reservarDemo(s: Socio, a: typeof natacion, n: number) {
+    const suspendidas = await prisma.excepcionClase.findMany({ where: { actividadId: a.id, tipo: "SUSPENDIDA" } });
+    for (const { fecha, horario } of proximas(a, n)) {
+      await prisma.reserva.create({ data: { clubId: club.id, actividadId: a.id, socioId: s.id, fecha, hora: horario.hora } });
+      const suspendida = suspendidas.some((e) => e.fecha.getTime() === fecha.getTime() && e.hora === horario.hora);
+      if (a.precioClase > 0 && !suspendida) {
+        await prisma.cargo.create({
+          data: {
+            clubId: club.id, socioId: s.id, concepto: "CLASE", actividadId: a.id,
+            clave: `CLA:${a.id}:${claveDia(fecha)}:${horario.hora}`, descripcion: `${a.nombre} ${formatDiaCorto(fecha)} ${horario.hora}`,
+            periodo: periodoActual(), monto: a.precioClase, vencimiento: fecha,
+          },
+        });
+      }
+    }
+  }
+  await reservarDemo(lucia, natacion, 4);
+  await reservarDemo(sofia, futbol, 2);
+  await reservarDemo(martin, yoga, 1);
+  await reservarDemo(valentina, yoga, 1);
+  const [claseYoga] = proximas(yoga, 1);
+  await prisma.listaEspera.create({
+    data: { clubId: club.id, actividadId: yoga.id, socioId: lucia.id, fecha: claseYoga.fecha, hora: claseYoga.horario.hora },
+  });
+
   await prisma.evento.create({
     data: {
       clubId: club.id, titulo: "Asamblea anual", fecha: new Date(hoyDia.getTime() + 3 * DIA_MS), hora: "20:00",
@@ -168,7 +189,7 @@ async function main() {
   });
 
   // Avisos de ejemplo para Lucía (sin leer), con su copia por mail en el buzón de salida.
-  const deudaActual = cuota(lucia) + natacion.arancel;
+  const deudaActual = cuota(lucia);
   const avisos = [
     {
       tipo: "CARGOS_GENERADOS", titulo: `Ya podés pagar ${actual}`, link: "/c/demo/socio",
