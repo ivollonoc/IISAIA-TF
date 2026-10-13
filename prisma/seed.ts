@@ -126,8 +126,8 @@ async function main() {
   await prisma.intentoPago.create({
     data: {
       clubId: club.id, socioId: lucia.id, cargoIds: online.cargos.map((c) => c.id), monto: online.pago.monto,
-      estado: "APROBADO", pasarela: "simulada", referenciaExterna: "SIM-seed", ultimos4: "0001", pagoId: online.pago.id,
-      createdAt: online.pago.fecha,
+      estado: "APROBADO", pasarela: "simulada", referenciaExterna: "SIM-seed", ultimos4: "0001",
+      createdAt: online.pago.fecha, pagos: { connect: { id: online.pago.id } },
     },
   });
 

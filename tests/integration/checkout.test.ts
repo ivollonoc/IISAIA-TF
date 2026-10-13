@@ -55,10 +55,11 @@ describe("pagarOnline", () => {
     expect(r.estado).toBe("APROBADO");
 
     const pago = await db.pago.findFirstOrThrow();
-    expect(pago).toMatchObject({ monto: 20000, medio: "ONLINE", registradoPor: null });
+    expect(pago).toMatchObject({ monto: 20000, medio: "ONLINE", registradoPor: null, pagadorId: null });
     expect(await db.cargo.count({ where: { estado: "PAGADO", pagoId: pago.id } })).toBe(2);
     const intento = await db.intentoPago.findFirstOrThrow();
-    expect(intento).toMatchObject({ estado: "APROBADO", pagoId: pago.id, ultimos4: "0001", monto: 20000, pasarela: "simulada" });
+    expect(intento).toMatchObject({ estado: "APROBADO", ultimos4: "0001", monto: 20000, pasarela: "simulada" });
+    expect(pago.intentoId).toBe(intento.id);
     expect(intento.referenciaExterna).toBe(`SIM-${intento.id}`);
   });
 
@@ -66,7 +67,7 @@ describe("pagarOnline", () => {
     const c = await f.crearCargo(club.id, socio.id);
     const r = await pagarOnline(club.id, socio.id, [c.id], tarjeta("4000 0000 0000 0002"), pasarelaSimulada);
     expect(r).toMatchObject({ estado: "RECHAZADO", motivo: "Fondos insuficientes" });
-    expect(await db.intentoPago.findFirstOrThrow()).toMatchObject({ estado: "RECHAZADO", motivoRechazo: "Fondos insuficientes", pagoId: null });
+    expect(await db.intentoPago.findFirstOrThrow()).toMatchObject({ estado: "RECHAZADO", motivoRechazo: "Fondos insuficientes" });
     expect((await db.cargo.findUnique({ where: { id: c.id } }))?.estado).toBe("PENDIENTE");
     expect(await db.pago.count()).toBe(0);
   });
@@ -109,8 +110,9 @@ describe("pagarOnline", () => {
     };
     const r = await pagarOnline(club.id, socio.id, [c.id], tarjeta(), conCarrera);
     expect(r).toMatchObject({ estado: "REQUIERE_REVISION", motivo: "Alguno de los cargos ya fue pagado o anulado" });
-    expect(await db.intentoPago.findFirstOrThrow()).toMatchObject({ estado: "APROBADO", pagoId: null, referenciaExterna: "R-1" });
+    expect(await db.intentoPago.findFirstOrThrow()).toMatchObject({ estado: "APROBADO", referenciaExterna: "R-1" });
     expect(await db.pago.count()).toBe(1); // solo el de ventanilla
+    expect((await db.pago.findFirstOrThrow()).intentoId).toBeNull();
   });
 
   it("tarjeta inválida: no crea intento", async () => {
@@ -128,5 +130,38 @@ describe("pagarOnline", () => {
       "Alguno de los cargos ya fue pagado o anulado",
     );
     expect(await db.intentoPago.count()).toBe(0);
+  });
+});
+
+describe("grupo familiar", () => {
+  let titular: Socio;
+  let familiar: Socio;
+  beforeEach(async () => {
+    titular = await f.crearSocio(club.id, { nombre: "Ana" });
+    familiar = await f.crearSocio(club.id, { nombre: "Beto" });
+    await db.socio.update({ where: { id: familiar.id }, data: { titularId: titular.id } });
+  });
+
+  it("el titular paga cargos propios y de sus familiares: un pago por socio, ligados al mismo intento", async () => {
+    const propio = await f.crearCargo(club.id, titular.id, { monto: 15000 });
+    const delFamiliar = await f.crearCargo(club.id, familiar.id, { monto: 8000 });
+    expect((await prepararCheckout(club.id, titular.id, [propio.id, delFamiliar.id])).total).toBe(23000);
+
+    const r = await pagarOnline(club.id, titular.id, [propio.id, delFamiliar.id], tarjeta(), pasarelaSimulada);
+    expect(r.estado).toBe("APROBADO");
+    const intento = await db.intentoPago.findFirstOrThrow();
+    expect(intento).toMatchObject({ socioId: titular.id, monto: 23000 });
+    const pagos = await db.pago.findMany({ orderBy: { monto: "asc" } });
+    expect(pagos.map((p) => [p.socioId, p.monto, p.pagadorId, p.intentoId])).toEqual([
+      [familiar.id, 8000, titular.id, intento.id],
+      [titular.id, 15000, null, intento.id],
+    ]);
+  });
+
+  it("un familiar no puede pagar; nadie paga cargos de socios fuera de su grupo", async () => {
+    const delFamiliar = await f.crearCargo(club.id, familiar.id);
+    await expect(prepararCheckout(club.id, familiar.id, [delFamiliar.id])).rejects.toThrow("Los pagos de tu grupo los hace el titular");
+    const ajeno = await f.crearCargo(club.id, socio.id);
+    await expect(prepararCheckout(club.id, titular.id, [ajeno.id])).rejects.toThrow("Alguno de los cargos ya fue pagado o anulado");
   });
 });

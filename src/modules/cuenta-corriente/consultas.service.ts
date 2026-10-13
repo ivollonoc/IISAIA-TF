@@ -14,7 +14,11 @@ export async function cuentaSocio(clubId: string, socioId: string, hoy: Date = n
 
   const [cargos, pagos] = await Promise.all([
     db.cargo.findMany({ where: { clubId, socioId }, orderBy: [{ vencimiento: "asc" }, { createdAt: "asc" }] }),
-    db.pago.findMany({ where: { clubId, socioId }, orderBy: { fecha: "asc" } }),
+    db.pago.findMany({
+      where: { clubId, socioId },
+      orderBy: { fecha: "asc" },
+      include: { pagador: { select: { nombre: true, apellido: true } } },
+    }),
   ]);
 
   const movs: MovimientoCuenta[] = [
@@ -32,7 +36,7 @@ export async function cuentaSocio(clubId: string, socioId: string, hoy: Date = n
       id: p.id,
       fecha: p.fecha,
       tipo: "PAGO" as const,
-      concepto: `Pago (${p.medio.toLowerCase()})`,
+      concepto: `Pago (${p.medio.toLowerCase()})${p.pagador ? ` · pagó ${p.pagador.nombre} ${p.pagador.apellido}` : ""}`,
       monto: p.monto,
       anulado: false,
       estado: null,
@@ -110,7 +114,7 @@ export async function cuentaClub(clubId: string, hoy: Date = new Date()) {
       where: { clubId, estado: "PENDIENTE", vencimiento: { lt: inicioDelDia(hoy) } },
       _sum: { monto: true },
     }),
-    db.intentoPago.count({ where: { clubId, estado: "APROBADO", pagoId: null } }),
+    db.intentoPago.count({ where: { clubId, estado: "APROBADO", pagos: { none: {} } } }),
   ]);
   const suma = (ps: { monto: number }[]) => ps.reduce((s, p) => s + p.monto, 0);
   return {

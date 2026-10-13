@@ -1,28 +1,36 @@
 // Checkout online: valida y cobra cargos pendientes del socio con la pasarela configurada.
 import { db } from "@/lib/db";
 import { DomainError, mensajeDeError } from "@/lib/errors";
-import { registrarPago } from "@/modules/cuenta-corriente/pagos.service";
+import { registrarPagoGrupal } from "@/modules/cuenta-corriente/pagos.service";
 import { notificar } from "@/modules/notificaciones/emitir";
+import { integrantesDelGrupo } from "@/modules/socios/grupos.service";
 import { getPasarela } from "./index";
 import type { Pasarela, ResultadoPasarela } from "./pasarela";
 import { tarjetaSchema } from "./schema";
 
 export type ResultadoCheckout =
-  | { estado: "APROBADO"; intentoId: string; pagoId: string }
+  | { estado: "APROBADO"; intentoId: string; pagoIds: string[] }
   | { estado: "RECHAZADO"; intentoId: string; motivo: string }
   | { estado: "PENDIENTE"; intentoId: string; redirectUrl?: string }
   | { estado: "REQUIERE_REVISION"; intentoId: string; motivo: string };
 
-/** Cargos a pagar y su total. Falla si alguno no es del socio o ya no está pendiente. */
+/**
+ * Cargos a pagar y su total. Puede pagar los suyos y, si es titular, los de su grupo familiar; un
+ * familiar no paga (lo hace su titular). Falla si alguno no es del grupo o ya no está pendiente.
+ */
 export async function prepararCheckout(clubId: string, socioId: string, cargoIds: string[]) {
   const ids = [...new Set(cargoIds.filter(Boolean))];
   if (ids.length === 0) throw new DomainError("Elegí al menos un cargo");
+  const grupo = await integrantesDelGrupo(clubId, socioId);
+  if (grupo[0].titularId) throw new DomainError("Los pagos de tu grupo los hace el titular");
+  const socioIds = grupo.map((s) => s.id);
   const cargos = await db.cargo.findMany({
-    where: { id: { in: ids }, clubId, socioId, estado: "PENDIENTE" },
+    where: { id: { in: ids }, clubId, socioId: { in: socioIds }, estado: "PENDIENTE" },
     orderBy: { vencimiento: "asc" },
+    include: { socio: { select: { nombre: true, apellido: true } } },
   });
   if (cargos.length !== ids.length) throw new DomainError("Alguno de los cargos ya fue pagado o anulado");
-  return { cargos, total: cargos.reduce((s, c) => s + c.monto, 0) };
+  return { cargos, socioIds, total: cargos.reduce((s, c) => s + c.monto, 0) };
 }
 
 /**
@@ -38,7 +46,7 @@ export async function pagarOnline(
   pasarela: Pasarela = getPasarela(),
 ): Promise<ResultadoCheckout> {
   const tarjeta = tarjetaSchema.parse(datosTarjeta);
-  const { cargos, total } = await prepararCheckout(clubId, socioId, cargoIds);
+  const { cargos, socioIds, total } = await prepararCheckout(clubId, socioId, cargoIds);
   const ids = cargos.map((c) => c.id);
   const intento = await db.intentoPago.create({
     data: {
@@ -77,16 +85,15 @@ export async function pagarOnline(
 
   const referencia = resultado.referencia;
   try {
-    const pago = await db.$transaction(async (tx) => {
-      const p = await registrarPago(clubId, { socioId, cargoIds: ids, medio: "ONLINE" }, tx);
-      await tx.intentoPago.update({
-        where: { id: intento.id },
-        data: { estado: "APROBADO", referenciaExterna: referencia, pagoId: p.id },
+    const pagos = await db.$transaction(async (tx) => {
+      const ps = await registrarPagoGrupal(tx, clubId, {
+        pagadorId: socioId, socioIds, cargoIds: ids, medio: "ONLINE", intentoId: intento.id,
       });
-      return p;
+      await tx.intentoPago.update({ where: { id: intento.id }, data: { estado: "APROBADO", referenciaExterna: referencia } });
+      return ps;
     });
-    await notificar(clubId, { tipo: "PAGO_ACREDITADO", socioId, monto: pago.monto });
-    return { estado: "APROBADO", intentoId: intento.id, pagoId: pago.id };
+    await notificar(clubId, { tipo: "PAGO_ACREDITADO", socioId, monto: total });
+    return { estado: "APROBADO", intentoId: intento.id, pagoIds: pagos.map((p) => p.id) };
   } catch (e) {
     const motivo = mensajeDeError(e);
     if (motivo === null) console.error("Pago aprobado sin poder registrarse", e);

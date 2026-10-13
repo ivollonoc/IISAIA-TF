@@ -43,3 +43,41 @@ export async function registrarPago(clubId: string, input: unknown, tx?: Prisma.
   await notificar(clubId, { tipo: "PAGO_ACREDITADO", socioId: pago.socioId, monto: pago.monto });
   return pago;
 }
+
+/**
+ * Pago online de un socio que puede incluir cargos de su grupo familiar (si es titular): crea un
+ * pago por cada socio dueño de cargos, así la cuenta de cada uno cierra; los de los familiares
+ * llevan `pagadorId` = titular. Corre dentro de la transacción del checkout; `socioIds` son los
+ * socios cuyos cargos puede pagar (ver integrantesDelGrupo).
+ */
+export async function registrarPagoGrupal(
+  tx: Prisma.TransactionClient,
+  clubId: string,
+  pago: { pagadorId: string; socioIds: string[]; cargoIds: string[]; medio: "ONLINE"; intentoId: string },
+) {
+  const cargos = await tx.cargo.findMany({
+    where: { id: { in: pago.cargoIds }, clubId, socioId: { in: pago.socioIds } },
+    select: { id: true, socioId: true, monto: true },
+  });
+  if (cargos.length !== pago.cargoIds.length) throw new DomainError("Cargo no encontrado");
+
+  const porSocio = new Map<string, typeof cargos>();
+  for (const c of cargos) porSocio.set(c.socioId, [...(porSocio.get(c.socioId) ?? []), c]);
+  const pagos = [];
+  for (const [socioId, deSocio] of porSocio) {
+    const p = await tx.pago.create({
+      data: {
+        clubId, socioId, medio: pago.medio, intentoId: pago.intentoId,
+        monto: deSocio.reduce((s, c) => s + c.monto, 0),
+        pagadorId: socioId === pago.pagadorId ? null : pago.pagadorId,
+      },
+    });
+    const { count } = await tx.cargo.updateMany({
+      where: { id: { in: deSocio.map((c) => c.id) }, estado: "PENDIENTE" },
+      data: { estado: "PAGADO", pagoId: p.id },
+    });
+    if (count !== deSocio.length) throw new DomainError("Alguno de los cargos ya fue pagado o anulado");
+    pagos.push(p);
+  }
+  return pagos;
+}

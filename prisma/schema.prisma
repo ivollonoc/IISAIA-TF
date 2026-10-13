@@ -145,11 +145,15 @@ model Socio {
   dni                 String
   email               String?
   telefono            String? // para avisos por SMS
+  titularId           String? // grupo familiar: socio titular (mismo club); null = sin grupo o es titular
+  titular             Socio?              @relation("GrupoFamiliar", fields: [titularId], references: [id], onDelete: SetNull)
+  familiares          Socio[]             @relation("GrupoFamiliar")
+  pagosHechos         Pago[]              @relation("PagosDelTitular")
   tipoSocioId         String
   tipoSocio           TipoSocio           @relation(fields: [tipoSocioId], references: [id])
   activo              Boolean             @default(true)
   createdAt           DateTime            @default(now())
-  pagos               Pago[]
+  pagos               Pago[]              @relation("PagosDelSocio")
   inscripciones       Inscripcion[]
   cargos              Cargo[]
   intentosPago        IntentoPago[]
@@ -159,6 +163,7 @@ model Socio {
   @@unique([clubId, nroSocio])
   @@unique([clubId, dni])
   @@index([clubId])
+  @@index([titularId])
 }
 
 // Un pago cancela uno o más cargos completos; monto = suma de sus cargos.
@@ -167,13 +172,16 @@ model Pago {
   clubId        String
   club          Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
   socioId       String
-  socio         Socio        @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  socio         Socio        @relation("PagosDelSocio", fields: [socioId], references: [id], onDelete: Cascade)
   monto         Int
   medio         MedioPago
   fecha         DateTime     @default(now())
   registradoPor String? // usuarioId del admin; null si es ONLINE
+  pagadorId     String? // titular que pagó por un familiar; null = lo pagó el propio socio
+  pagador       Socio?       @relation("PagosDelTitular", fields: [pagadorId], references: [id], onDelete: SetNull)
+  intentoId     String? // intento online que lo generó (uno puede generar varios pagos: grupo familiar)
+  intento       IntentoPago? @relation(fields: [intentoId], references: [id], onDelete: SetNull)
   cargos        Cargo[]
-  intento       IntentoPago?
 
   @@index([clubId, fecha])
 }
@@ -268,8 +276,7 @@ model IntentoPago {
   referenciaExterna String?
   motivoRechazo     String?
   ultimos4          String?
-  pagoId            String?       @unique
-  pago              Pago?         @relation(fields: [pagoId], references: [id], onDelete: SetNull)
+  pagos             Pago[]
   createdAt         DateTime      @default(now())
 
   @@index([clubId, estado])

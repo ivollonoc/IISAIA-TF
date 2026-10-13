@@ -63,6 +63,14 @@ describe("cuentaSocio", () => {
     ]);
   });
 
+  it("un pago hecho por el titular del grupo dice quién pagó", async () => {
+    const titular = await f.crearSocio(club.id, { nombre: "Ana", apellido: "Paz" });
+    const pago = await f.crearPagoDirecto(club.id, socio.id, { medio: "ONLINE" });
+    await (await import("@/lib/db")).db.pago.update({ where: { id: pago.id }, data: { pagadorId: titular.id } });
+    const c = await cuentaSocio(club.id, socio.id, hoy);
+    expect(c.movimientos.find((m) => m.tipo === "PAGO")?.concepto).toBe("Pago (online) · pagó Ana Paz");
+  });
+
   it("sin cargos está al día y sin deuda", async () => {
     const c = await cuentaSocio(club.id, socio.id, hoy);
     expect(c).toMatchObject({ movimientos: [], deuda: 0, deudaVencida: 0, proximoVencimiento: null, alDia: true });
