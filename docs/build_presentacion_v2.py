@@ -143,7 +143,74 @@ s.notes_slide.notes_text_frame.text = (
     "Hoy presentamos la v2: qué agregamos, cómo lo construimos y una demo corta."
 )
 
-# ---------- 2. De v1 a v2 ----------
+# ---------- 2. El problema (slide 2 de la v1) ----------
+s = prs.slides.add_slide(BLANK)
+fondo(s, WHITE)
+titulo(s, "El problema")
+texto(s, 0.6, 1.7, 5.6, 4.6, [
+    {"text": "Los clubes chicos y medianos gestionan socios, cuotas e inscripciones con planillas y WhatsApp.",
+     "size": 24, "bold": True, "color": DARK, "font": HEAD, "espacio": 18},
+    {"text": "Objetivo", "size": 14, "bold": True, "color": GREEN, "espacio": 4},
+    {"text": "Un espacio por club para administrar padrón, cobros y actividades, "
+             "y autogestión para cada socio.", "size": 18, "color": INK},
+])
+dolores = [
+    ("Información dispersa", "Padrón en planillas, pagos en el banco, inscripciones por chat."),
+    ("¿Quién está al día?", "No hay una vista simple de las cuotas pendientes del mes."),
+    ("Cupos sin control", "Las actividades se sobrecargan o quedan lugares sin usar."),
+]
+for i, (h, d) in enumerate(dolores):
+    y = 1.7 + i * 1.6
+    caja(s, 6.9, y, 5.85, 1.4, fill=MINT)
+    numero(s, 7.15, y + 0.42, i + 1)
+    texto(s, 7.95, y + 0.25, 4.6, 1.0, [
+        {"text": h, "size": 18, "bold": True, "color": DARK, "font": HEAD, "espacio": 4},
+        {"text": d, "size": 14, "color": MUTED},
+    ])
+s.notes_slide.notes_text_frame.text = (
+    "Recordemos el punto de partida: la información está repartida entre planillas, homebanking y chats. "
+    "El club no sabe rápido quién debe la cuota y los cupos de actividades se manejan a mano."
+)
+
+# ---------- 3. Resumen del MVP v1 ----------
+s = prs.slides.add_slide(BLANK)
+fondo(s, MINT)
+titulo(s, "Lo que construimos en el MVP v1",
+       sub="Un recorrido completo por cada rol, multi-tenant por ruta: /c/<slug>")
+roles_v1 = [
+    ("G", "Admin general", ["Crea clubes (nombre + slug)", "Asigna el admin de cada club por email"]),
+    ("C", "Admin de club", ["Tipos de socio y cuota mensual", "Alta, edición y baja de socios",
+                            "Registra pagos del mes", "Actividades con cupo y resumen del mes"]),
+    ("S", "Socio", ["Ve su estado de cuota e historial de pagos",
+                    "Se inscribe o cancela respetando el cupo"]),
+]
+for i, (letra, nombre, items) in enumerate(roles_v1):
+    x = 0.6 + i * 4.15
+    caja(s, x, 1.75, 3.85, 2.95, fill=WHITE, borde=BORDER)
+    numero(s, x + 0.3, 2.0, letra, d=0.6, fill=DARK, color=ACCENT, size=20)
+    texto(s, x + 1.1, 2.08, 2.6, 0.5, nombre, size=20, bold=True, color=DARK, font=HEAD)
+    texto(s, x + 0.3, 2.85, 3.3, 2.0,
+          [{"text": t, "bullet": True, "size": 14} for t in items], espacio=5)
+pilares_v1 = [
+    ("STACK", "Next.js 15 · Prisma · PostgreSQL · NextAuth con Google"),
+    ("DATOS", "clubId en cada tabla; “al día” = pago del mes actual"),
+    ("RECORTES", "Ruta en vez de subdominio; pagos cargados por el club"),
+    ("CALIDAD", "Vitest · CI en GitHub Actions · Docker y Codespaces"),
+]
+for i, (h, d) in enumerate(pilares_v1):
+    x = 0.6 + i * 3.0833
+    caja(s, x, 5.0, 2.9, 1.55, fill=DARK)
+    texto(s, x + 0.25, 5.2, 2.4, 1.2, [
+        {"text": h, "size": 12, "bold": True, "color": ACCENT, "font": HEAD, "espacio": 4},
+        {"text": d, "size": 14, "color": WHITE},
+    ])
+s.notes_slide.notes_text_frame.text = (
+    "En la v1 llegamos a un MVP de punta a punta: cada rol tenía su recorrido mínimo funcionando. "
+    "Hicimos dos recortes conscientes, multi-tenant por ruta y cobros registrados a mano por el club, "
+    "y dejamos el diseño preparado para crecer. Eso es lo que la v2 retoma."
+)
+
+# ---------- 4. De v1 a v2 ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "De la v1 a la v2 en nueve etapas",
@@ -178,7 +245,7 @@ s.notes_slide.notes_text_frame.text = (
     "La etapa 0 no cambió comportamiento: migraciones, tests de integración y modularización."
 )
 
-# ---------- 3. Cuenta corriente ----------
+# ---------- 5. Cuenta corriente ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Cuenta corriente y pagos", sub="De “un pago por mes” a cargos y pagos por socio")
@@ -218,7 +285,7 @@ s.notes_slide.notes_text_frame.text = (
     "simulada o en ventanilla. El titular de un grupo familiar paga por todos."
 )
 
-# ---------- 4. Agenda y reservas ----------
+# ---------- 6. Agenda y reservas ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Agenda única con reserva por clase")
@@ -265,7 +332,7 @@ s.notes_slide.notes_text_frame.text = (
     "por clase, con cupo, lista de espera y precio por clase."
 )
 
-# ---------- 5. Notificaciones y acceso ----------
+# ---------- 7. Notificaciones y acceso ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, MINT)
 titulo(s, "Notificaciones y acceso sin contraseñas")
@@ -313,7 +380,7 @@ s.notes_slide.notes_text_frame.text = (
     "Sacamos Google: se ingresa con link mágico o invitación por mail."
 )
 
-# ---------- 6. Socios y reportes ----------
+# ---------- 8. Socios y reportes ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Socios en bloque, familias y reportes")
@@ -365,7 +432,7 @@ s.notes_slide.notes_text_frame.text = (
     "y reportes del club con KPIs, recaudación, morosidad, ocupación y puntaje de actividades."
 )
 
-# ---------- 7. Subdominios ----------
+# ---------- 9. Subdominios ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Un subdominio por club",
@@ -403,7 +470,7 @@ s.notes_slide.notes_text_frame.text = (
     "reescribe el subdominio a la ruta interna del club. Cada club tiene además su página pública."
 )
 
-# ---------- 8. Arquitectura y calidad ----------
+# ---------- 10. Arquitectura y calidad ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Arquitectura modular y calidad")
@@ -444,7 +511,7 @@ s.notes_slide.notes_text_frame.text = (
     "tests de integración contra Postgres real, que corren en el CI en cada PR."
 )
 
-# ---------- 9. Demo ----------
+# ---------- 11. Demo ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, WHITE)
 titulo(s, "Demo v2", sub="Con los datos del seed, sin preparación manual")
@@ -476,7 +543,7 @@ s.notes_slide.notes_text_frame.text = (
     "a quienes reservaron y los reportes reflejan todo."
 )
 
-# ---------- 10. Cierre ----------
+# ---------- 12. Cierre ----------
 s = prs.slides.add_slide(BLANK)
 fondo(s, DARK)
 titulo(s, "Próximos pasos", color=WHITE, sub="Lo simulado ya tiene su interfaz: falta conectar lo real")
