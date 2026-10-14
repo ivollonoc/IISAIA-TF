@@ -9,3 +9,6 @@ next-env.d.ts
 .vercel
 .DS_Store
 desktop.ini
+
+# Claude Code: configuración personal (la del proyecto es .claude/settings.json)
+.claude/settings.local.json
