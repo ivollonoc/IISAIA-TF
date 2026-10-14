@@ -15,13 +15,14 @@ npm run typecheck   # tsc --noEmit
 npm test            # unit + integración (requiere Postgres: docker compose up -d db)
 npm run test:unit   # solo unitarios, sin base
 npm run test:int    # solo integración, contra gestion_socios_test (.env.test)
+npm run test:e2e    # end-to-end con Playwright (levanta la app; base con seed y DEMO_LOGIN=true)
 npm run build       # prisma generate + next build
 npm run db:migrate  # nueva migración en desarrollo (prisma migrate dev)
 npm run db:deploy   # aplica migraciones (prisma migrate deploy)
 npm run db:seed     # datos demo (prisma/seed.ts)
 ```
 
-El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck → tests → build.
+El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck → tests → build → e2e.
 
 ## Mapa de carpetas
 
@@ -30,7 +31,8 @@ El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck 
 ├── CLAUDE.md, README.md        instrucciones para agentes / cómo correr, testear y desplegar
 ├── descripcion-app             consigna y descripción original de la app (texto)
 ├── package.json                scripts y dependencias
-├── next.config.ts, tsconfig.json, postcss.config.mjs, vitest.config.ts
+├── next.config.ts, tsconfig.json, postcss.config.mjs, vitest.config.ts, playwright.config.ts
+├── .mcp.json                   servidores MCP del proyecto (Playwright MCP)
 ├── Dockerfile, docker-compose.yml, .devcontainer/   Postgres local, Docker y Codespaces
 ├── .env.example, .env.test     variables de entorno (.env no se versiona)
 ├── .github/workflows/ci.yml    CI en GitHub Actions
@@ -74,6 +76,7 @@ El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck 
 ├── tests/
 │   ├── unit/                   funciones puras, sin base
 │   ├── integration/            servicios contra Postgres real (gestion_socios_test)
+│   ├── e2e/                    Playwright: recorridos en el navegador (*.spec.ts, fuera de Vitest)
 │   └── helpers/                reset de base, factories, guard que exige una base *_test
 │
 └── docs/
@@ -126,6 +129,7 @@ Convención: `service.ts` (lógica, siempre recibe y filtra por `clubId`) · `sc
 |---|---|
 | `CLAUDE.md` | Este archivo: mapa, comandos y convenciones |
 | `.claude/settings.json` | Permisos del proyecto y plugins (lo personal va en `.claude/settings.local.json`, no versionado) |
+| `.mcp.json` | Playwright MCP, habilitado para todos en `settings.json` (`enabledMcpjsonServers`): Claude abre la app, navega y saca capturas para verificar cambios de UI. Requiere `npm run dev` levantado |
 | `.claude/skills/club-branding/` | Skill propia: tematiza un club desde su logo. `paleta.ts` extrae colores (sharp) y arma la escala con contraste AA validada con `lib/tema.ts`; Claude elige primario y secundario mirando el logo; `aplicar.ts` guarda logo y tema (se niega si `DATABASE_URL` no es local) |
 
 Decisión: el tema se genera con una skill porque elegir el color institucional requiere criterio; la app solo valida y aplica.

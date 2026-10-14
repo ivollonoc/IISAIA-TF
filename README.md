@@ -115,9 +115,11 @@ src/
 tests/
   unit/            funciones puras, sin base
   integration/     servicios contra Postgres real (gestion_socios_test)
+  e2e/             Playwright: recorridos en el navegador contra la app levantada
   helpers/         reset de base, factories y guard de base _test
 docs/              propuesta, presentaciones, contexto (docs/contexto) y specs y planes (docs/superpowers)
 .claude/           configuración del agente versionada: settings.json y la skill club-branding
+.mcp.json         servidores MCP del proyecto: Playwright MCP
 ```
 
 El detalle de cada módulo está en [CLAUDE.md](CLAUDE.md#módulos-srcmodules).
@@ -201,12 +203,15 @@ Autenticada con la sesión JWT de NextAuth.
 npm test          # unitarios + integración (requiere Postgres: docker compose up -d db)
 npm run test:unit # solo unitarios, sin base
 npm run test:int  # solo integración, contra gestion_socios_test (ver .env.test)
+npm run test:e2e  # end-to-end con Playwright (ver abajo)
 npm run typecheck # tipos
 ```
 
+Los tests end-to-end (`tests/e2e`, [playwright.config.ts](playwright.config.ts)) levantan la app sola (o reutilizan el `npm run dev` que esté corriendo) y la recorren en Chromium: ingreso con cada usuario demo y redirección sin sesión. Necesitan la base con el seed y `DEMO_LOGIN=true`. La primera vez hay que bajar el navegador: `npx playwright install chromium`. Si un test falla, `npx playwright show-report` muestra el reporte con la traza.
+
 Los tests de integración recrean la base gestion_socios_test en cada corrida y vacían las tablas antes de cada test; se niegan a correr contra una base cuyo nombre no termine en _test.
 
-El CI de GitHub Actions ([ci.yml](.github/workflows/ci.yml)) corre en cada push a `main` y en cada pull request, contra un Postgres descartable: `prisma migrate deploy` → seed → typecheck → tests → build.
+El CI de GitHub Actions ([ci.yml](.github/workflows/ci.yml)) corre en cada push a `main` y en cada pull request, contra un Postgres descartable: `prisma migrate deploy` → seed → typecheck → tests → build → e2e (contra el build de producción; si fallan, sube el reporte de Playwright como artefacto).
 
 ## Deploy (Vercel + Neon)
 
@@ -286,9 +291,10 @@ Todo lo versionado es para Claude Code:
 | Pieza | Qué hay | Por qué así |
 |---|---|---|
 | Instrucciones del proyecto | [CLAUDE.md](CLAUDE.md): mapa de carpetas, tabla de módulos, comandos y convenciones | Son las reglas que hay que tener presentes en cada cambio: filtrar por `clubId`, re-verificar el acceso en cada action, sacar el `socioId` de la sesión, migrar en vez de `db push`, escribir en español |
-| Permisos del runtime | [.claude/settings.json](.claude/settings.json). **allow:** typecheck, tests, build, `prisma migrate dev`, seed y git local. **ask:** `git push`, crear o mergear PRs, `npm install`, `migrate deploy`, editar migraciones ya escritas y el CI. **deny:** leer o editar `.env*`, `prisma migrate reset`, `db push`, `push --force` y `reset --hard` | Lo que se repite en cada etapa no pide permiso; lo que sale de la máquina, cambia dependencias o toca producción se confirma; lo destructivo o lo que expone secretos no se puede. `main` despliega en Vercel: por eso el push siempre se pregunta |
+| Permisos del runtime | [.claude/settings.json](.claude/settings.json). **allow:** typecheck, tests (incluidos los e2e), build, `prisma migrate dev`, seed, git local y las herramientas del Playwright MCP. **ask:** `git push`, crear o mergear PRs, `npm install`, `playwright install`, `migrate deploy`, editar migraciones ya escritas y el CI. **deny:** leer o editar `.env*`, `prisma migrate reset`, `db push`, `push --force` y `reset --hard` | Lo que se repite en cada etapa no pide permiso; lo que sale de la máquina, cambia dependencias o toca producción se confirma; lo destructivo o lo que expone secretos no se puede. `main` despliega en Vercel: por eso el push siempre se pregunta |
 | Plugin | `superpowers` en `enabledPlugins` | Da el flujo spec → plan → ejecución → revisión con el que se generó `docs/superpowers` |
 | Skill propia | [.claude/skills/club-branding](.claude/skills/club-branding/SKILL.md): del escudo del club a su tema. Extrae colores con `sharp`, Claude elige primario y secundario, genera la escala con contraste AA, pide aprobación y aplica | Es una tarea que necesita criterio visual y se repite por cada club; los scripts hacen lo mecánico y validan con la misma regla que la app (`lib/tema.ts`). `aplicar.ts` se niega si la base no es local |
+| Servidor MCP | [.mcp.json](.mcp.json): Playwright MCP, habilitado para todos con `enabledMcpjsonServers` y sus herramientas permitidas en `settings.json` | Permite que el agente abra la app, navegue y saque capturas para verificar un cambio de UI en vez de suponer que funciona. Al estar versionado, lo tiene cualquiera que clone el repo |
 | Lo personal | `.claude/settings.local.json` y `.claude/launch.json` | No se versionan: son de cada máquina |
 
 **Pendiente:** instrucciones por tema con scope por path (`.claude/rules/` para `prisma/**`, `tests/**` y `src/modules/**`) y un sub-agent. No se agregó un sub-agent propio porque las revisiones de cada etapa ya se hacen con el flujo de superpowers sobre el Review Focus del plan. Si se suma, el candidato es un revisor de aislamiento multi-tenant y permisos, que es donde apareció el único desvío de seguridad (ver abajo).

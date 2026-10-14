@@ -3,6 +3,7 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   },
+  "enabledMcpjsonServers": ["playwright"],
   "permissions": {
     "allow": [
       "Bash(npm run dev)",
@@ -14,6 +15,10 @@
       "Bash(npm run build)",
       "Bash(npx vitest run:*)",
       "Bash(npx tsc --noEmit)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(npx playwright show-report:*)",
+      "mcp__playwright",
 
       "Bash(npm run db:migrate:*)",
       "Bash(npm run db:seed)",
@@ -50,6 +55,7 @@
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
       "Bash(npm install:*)",
+      "Bash(npx playwright install:*)",
       "Bash(npm run db:deploy)",
       "Bash(npx prisma migrate deploy:*)",
       "Edit(./prisma/migrations/**)",
