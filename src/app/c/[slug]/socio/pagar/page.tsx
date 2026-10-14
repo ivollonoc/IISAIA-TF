@@ -77,7 +77,7 @@ export default async function PagarPage({
           </Card>
         </div>
       ) : (
-        <Link href={urlClub(slug, "/socio")} className="text-emerald-700 underline">
+        <Link href={urlClub(slug, "/socio")} className="text-primario-700 underline">
           Volver a mi cuenta
         </Link>
       )}

@@ -55,6 +55,8 @@ model Club {
   slug                String              @unique
   diaVencimiento      Int                 @default(10) // 1..28
   canales             CanalAviso[]        @default([IN_APP]) // vías de aviso a los socios (in-app siempre)
+  logoUrl             String? // ruta pública, ej. /clubs/demo.svg
+  tema                Json? // paleta derivada del logo (src/lib/tema.ts, skill club-branding)
   createdAt           DateTime            @default(now())
   usuarios            Usuario[]
   tiposSocio          TipoSocio[]

@@ -8,7 +8,7 @@ export function Tabs({ items }: { items: { href: string; label: string }[] }) {
         <Link
           key={i.href}
           href={i.href}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-emerald-600"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-primario-600"
         >
           {i.label}
         </Link>

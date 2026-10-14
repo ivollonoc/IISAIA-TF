@@ -24,8 +24,21 @@ async function main() {
   const superEmail = process.env.SUPERADMIN_EMAIL || "admin@gestiondesocios.com";
   await prisma.usuario.create({ data: { email: superEmail, nombre: "Admin general", rol: "SUPERADMIN", demo: true } });
 
+  // Tema generado con la skill club-branding a partir de public/clubs/demo.svg
+  const tema = {
+    primario: "#b5121b",
+    sobrePrimario: "#ffffff",
+    secundario: "#1d3f8f",
+    escala: {
+      "50": "#fff4f2", "100": "#ffe4e0", "200": "#ffcac4", "300": "#ffa59c", "400": "#ff7167", "500": "#e64c46",
+      "600": "#c92e2d", "700": "#ad171c", "800": "#8e0610", "900": "#730009", "950": "#4b0003",
+    },
+  };
   const club = await prisma.club.create({
-    data: { nombre: "Club Atlético Demo", slug: "demo", diaVencimiento, canales: ["IN_APP", "EMAIL"] },
+    data: {
+      nombre: "Club Atlético Demo", slug: "demo", diaVencimiento, canales: ["IN_APP", "EMAIL"],
+      logoUrl: "/clubs/demo.svg", tema,
+    },
   });
   const admin = await prisma.usuario.create({
     data: { email: "admin@demo.club", nombre: "Admin Demo", rol: "ADMIN_CLUB", clubId: club.id, demo: true },

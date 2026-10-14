@@ -17,7 +17,7 @@ export function ImportarSocios({ slug }: { slug: string }) {
     return (
       <div className="flex flex-col gap-3 text-sm">
         <p className="rounded-lg bg-emerald-50 px-4 py-2 text-emerald-800">{estado.ok}</p>
-        <Link href={urlClub(slug, "/admin/socios")} className="text-emerald-700 underline">
+        <Link href={urlClub(slug, "/admin/socios")} className="text-primario-700 underline">
           Ver socios
         </Link>
       </div>
@@ -65,7 +65,7 @@ export function ImportarSocios({ slug }: { slug: string }) {
               <input type="hidden" name="modo" value="importar" />
               <input type="hidden" name="texto" value={estado.texto} />
               <label className="flex items-center gap-2">
-                <input type="checkbox" name="invitar" defaultChecked className="accent-emerald-700" />
+                <input type="checkbox" name="invitar" defaultChecked className="accent-primario-700" />
                 Mandar la invitación por mail a los que tienen email
               </label>
               <Boton type="submit" disabled={enviando}>

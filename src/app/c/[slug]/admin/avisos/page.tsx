@@ -52,15 +52,15 @@ export default async function AvisosClubPage({
         <Card title="Vías de aviso">
           <form action={actualizarCanalesAction.bind(null, slug)} className="flex flex-col gap-3 text-sm">
             <label className="flex items-center gap-2 text-slate-500">
-              <input type="checkbox" checked disabled className="accent-emerald-700" />
+              <input type="checkbox" checked disabled className="accent-primario-700" />
               Notificación en la app (siempre)
             </label>
             <label className="flex items-center gap-2">
-              <input type="checkbox" name="EMAIL" defaultChecked={club.canales.includes("EMAIL")} className="accent-emerald-700" />
+              <input type="checkbox" name="EMAIL" defaultChecked={club.canales.includes("EMAIL")} className="accent-primario-700" />
               Mail (a los socios con email)
             </label>
             <label className="flex items-center gap-2">
-              <input type="checkbox" name="SMS" defaultChecked={club.canales.includes("SMS")} className="accent-emerald-700" />
+              <input type="checkbox" name="SMS" defaultChecked={club.canales.includes("SMS")} className="accent-primario-700" />
               SMS (a los socios con teléfono)
             </label>
             {simulado && <p className="text-xs text-slate-500">En esta demo los mails y SMS son simulados: no salen de la app.</p>}

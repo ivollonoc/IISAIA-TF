@@ -8,7 +8,7 @@ export const estiloItem: Record<string, string> = {
   SUSPENDIDA: "text-red-700 line-through",
   MOVIDA: "text-slate-400 line-through",
   REPROGRAMADA: "text-amber-700",
-  EVENTO: "text-emerald-700 font-medium",
+  EVENTO: "text-primario-700 font-medium",
 };
 
 export const claseDeItem = (i: ItemCalendario) => (i.tipo === "EVENTO" ? estiloItem.EVENTO : estiloItem[i.estado]);

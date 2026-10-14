@@ -11,7 +11,7 @@ const estiloBloque: Record<string, string> = {
   SUSPENDIDA: "border-red-200 bg-red-50 text-red-700 line-through",
   MOVIDA: "border-slate-200 bg-white text-slate-400 line-through",
   REPROGRAMADA: "border-amber-300 bg-amber-50 text-amber-800",
-  EVENTO: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  EVENTO: "border-primario-300 bg-primario-50 text-primario-800",
 };
 
 /** Grilla semanal por horas (desde md) y agenda (en celular) con los mismos ítems. */
@@ -36,7 +36,7 @@ export function CalendarioSemana({
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] pb-1 text-center text-xs font-medium text-slate-500">
           <span />
           {dias.map((d) => (
-            <span key={claveDia(d)} className={claveDia(d) === claveDia(hoy) ? "font-bold text-emerald-700" : ""}>
+            <span key={claveDia(d)} className={claveDia(d) === claveDia(hoy) ? "font-bold text-primario-700" : ""}>
               {formatDiaCorto(d)}
             </span>
           ))}
@@ -52,7 +52,7 @@ export function CalendarioSemana({
           {dias.map((d, columna) => (
             <div
               key={claveDia(d)}
-              className={`relative border-r border-slate-100 last:border-r-0 ${claveDia(d) === claveDia(hoy) ? "bg-emerald-50/40" : "bg-white"}`}
+              className={`relative border-r border-slate-100 last:border-r-0 ${claveDia(d) === claveDia(hoy) ? "bg-primario-50/40" : "bg-white"}`}
               style={{
                 height: alto,
                 backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${ALTO_HORA - 1}px, rgb(241 245 249) ${ALTO_HORA - 1}px, rgb(241 245 249) ${ALTO_HORA}px)`,

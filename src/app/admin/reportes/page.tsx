@@ -19,7 +19,7 @@ export default async function ReportesPlataformaPage({ searchParams }: { searchP
             <Link
               key={m}
               href={`/admin/reportes?meses=${m}`}
-              className={`px-3 py-1.5 ${m === meses ? "bg-emerald-700 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+              className={`px-3 py-1.5 ${m === meses ? "bg-primario text-sobre-primario" : "bg-white text-slate-700 hover:bg-slate-50"}`}
             >
               {m} meses
             </Link>

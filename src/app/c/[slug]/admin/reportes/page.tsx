@@ -35,7 +35,7 @@ export default async function ReportesClubPage({
             <Link
               key={m}
               href={`${base}?meses=${m}`}
-              className={`px-3 py-1.5 ${m === meses ? "bg-emerald-700 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+              className={`px-3 py-1.5 ${m === meses ? "bg-primario text-sobre-primario" : "bg-white text-slate-700 hover:bg-slate-50"}`}
             >
               {m} meses
             </Link>
@@ -88,7 +88,7 @@ export default async function ReportesClubPage({
                     </span>
                   </div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={`Ocupación ${o.porcentaje}%`}>
-                    <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(o.porcentaje, 100)}%` }} />
+                    <div className="h-full rounded-full bg-primario-600" style={{ width: `${Math.min(o.porcentaje, 100)}%` }} />
                   </div>
                 </li>
               ))}
@@ -117,7 +117,7 @@ export default async function ReportesClubPage({
                 {r.morosos.map((m) => (
                   <tr key={m.socioId}>
                     <td className="py-2 pr-4">
-                      <Link href={urlClub(slug, `/admin/socios/${m.socioId}`)} className="text-emerald-700 hover:underline">
+                      <Link href={urlClub(slug, `/admin/socios/${m.socioId}`)} className="text-primario-700 hover:underline">
                         {m.apellido}, {m.nombre}
                       </Link>
                     </td>

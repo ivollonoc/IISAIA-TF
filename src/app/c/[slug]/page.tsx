@@ -45,7 +45,7 @@ export default async function ClubPublicoPage({
     <div className="grid gap-8 py-4 lg:grid-cols-3">
       <div className="flex flex-col gap-6 lg:col-span-2">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">Bienvenido a</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-primario-700">Bienvenido a</p>
           <h1 className="text-4xl font-bold text-slate-900">{club.nombre}</h1>
           <p className="mt-2 text-slate-600">Reservá tus clases, pagá tu cuota online y enterate de todo lo que pasa en el club.</p>
         </div>

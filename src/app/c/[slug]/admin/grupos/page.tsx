@@ -47,7 +47,7 @@ export default async function GruposPage({
                       <Link href={urlClub(slug, `/admin/socios/${g.titular.id}`)} className="font-semibold text-slate-800 hover:underline">
                         {nombre(g.titular)}
                       </Link>{" "}
-                      <span className="text-xs text-emerald-700">titular · {1 + g.familiares.length} integrantes</span>
+                      <span className="text-xs text-primario-700">titular · {1 + g.familiares.length} integrantes</span>
                     </p>
                     <ul className="mt-1 flex flex-col gap-1 pl-4">
                       {g.familiares.map((f) => (

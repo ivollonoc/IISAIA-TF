@@ -26,6 +26,12 @@ Los mails y SMS se registran en la base (`MensajeSaliente`) pero no se muestran 
 
 El checkout usa la pasarela configurada en `PASARELA` (por defecto `simulada`). Tarjetas de prueba: `4000 0000 0000 0001` (aprobada) y `4000 0000 0000 0002` (rechazada por fondos insuficientes), con cualquier vencimiento futuro y CVV de 3 dígitos. Nunca se guardan el número completo ni el CVV. La integración con Mercado Pago está preparada (`src/modules/pagos-online/mercadopago.ts`) pero no implementada.
 
+### Colores y escudo de cada club
+
+Cada club tiene su escudo (`Club.logoUrl`, archivo en `public/clubs/`) y su paleta (`Club.tema`): el encabezado muestra el escudo y el nombre, y los botones, links y resaltados usan los colores del club (en su subdominio y para sus usuarios). Los colores con significado (verde "al día", ámbar "debe", rojo "error") son iguales en todos los clubes. Sin tema, se usa el verde por defecto.
+
+**Decisión:** el tema se genera con la skill de Claude Code [`club-branding`](.claude/skills/club-branding/SKILL.md) a partir del logo, porque elegir el color institucional requiere criterio (descartar fondo y contornos, reconocer el color de la camiseta). La app solo valida (`src/lib/tema.ts`: formato y contraste AA) y aplica.
+
 ## Stack
 
 Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · NextAuth (JWT, link mágico por mail + login demo) · Prisma · PostgreSQL · Zod · Vitest

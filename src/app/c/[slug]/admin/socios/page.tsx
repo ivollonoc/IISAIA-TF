@@ -43,7 +43,7 @@ export default async function SociosPage({
                 <tr key={s.id} className={s.activo ? "" : "opacity-50"}>
                   <td className="py-2 pr-4">{s.nroSocio}</td>
                   <td className="py-2 pr-4">
-                    <Link href={urlClub(slug, `/admin/socios/${s.id}`)} className="font-medium text-emerald-700 underline">
+                    <Link href={urlClub(slug, `/admin/socios/${s.id}`)} className="font-medium text-primario-700 underline">
                       {s.apellido}, {s.nombre}
                     </Link>
                   </td>
@@ -63,7 +63,7 @@ export default async function SociosPage({
           {tipos.length === 0 ? (
             <p className="text-sm text-slate-500">
               Primero creá un{" "}
-              <Link href={urlClub(slug, "/admin/tipos")} className="text-emerald-700 underline">
+              <Link href={urlClub(slug, "/admin/tipos")} className="text-primario-700 underline">
                 tipo de socio
               </Link>
               .

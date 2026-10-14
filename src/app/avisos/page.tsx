@@ -17,7 +17,7 @@ export default async function AvisosPage() {
 
   return (
     <>
-      <Link href={homePath(user)} className="mb-2 inline-block text-sm text-emerald-700 underline">
+      <Link href={homePath(user)} className="mb-2 inline-block text-sm text-primario-700 underline">
         ← Volver
       </Link>
       <Titulo sub="Novedades de tu club y de tu cuenta">Avisos</Titulo>
@@ -38,7 +38,7 @@ export default async function AvisosPage() {
                     <button className={`flex w-full gap-3 py-3 text-left hover:bg-slate-50 ${a.leidaAt ? "opacity-70" : ""}`}>
                       <span
                         aria-label={a.leidaAt ? "Leído" : "Sin leer"}
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.leidaAt ? "bg-transparent" : "bg-emerald-600"}`}
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.leidaAt ? "bg-transparent" : "bg-primario-600"}`}
                       />
                       <span className="min-w-0 flex-1">
                         <span className={`block text-sm ${a.leidaAt ? "text-slate-700" : "font-semibold text-slate-900"}`}>{a.titulo}</span>
