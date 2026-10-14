@@ -32,6 +32,32 @@ Cada club tiene su escudo (`Club.logoUrl`, archivo en `public/clubs/`) y su pale
 
 **Decisión:** el tema se genera con la skill de Claude Code [`club-branding`](.claude/skills/club-branding/SKILL.md) a partir del logo, porque elegir el color institucional requiere criterio (descartar fondo y contornos, reconocer el color de la camiseta). La app solo valida (`src/lib/tema.ts`: formato y contraste AA) y aplica.
 
+#### Cómo se tematiza un club (skill `club-branding`)
+
+Hoy no hay una pantalla para que el club cargue su escudo: lo tematiza quien mantiene la app, pidiéndoselo a Claude Code (por ejemplo, "tematizá el club atlas con este escudo"). La skill:
+
+1. **Extrae los colores** del logo (svg, png, jpg o webp) con `sharp`: colores dominantes con porcentaje, marcando blanco, negro, gris y fondo probable.
+   ```bash
+   npx tsx .claude/skills/club-branding/scripts/paleta.ts extraer public/clubs/demo.svg
+   ```
+2. **Elige primario y secundario mirando el logo** (lo hace Claude, no el script): descarta fondo y contornos y se queda con los colores institucionales, no necesariamente los de más píxeles.
+3. **Genera el tema y una lámina de vista previa**: escala 50–950 en OKLCH con el tono del primario, texto blanco u oscuro según contraste, y validación con la misma regla de la app. Si el primario no llega a AA, falla; con `--ajustar` lo oscurece.
+   ```bash
+   npx tsx .claude/skills/club-branding/scripts/paleta.ts tema --primario "#b5121b" --secundario "#1d3f8f" \
+     --logo public/clubs/demo.svg --salida tema.json --preview tema.html
+   ```
+4. **Pide aprobación** mostrando la lámina, y recién entonces **aplica**: copia el logo a `public/clubs/<slug>.<ext>` y guarda `logoUrl` y `tema` en el club.
+   ```bash
+   DATABASE_URL=<base local> npx tsx .claude/skills/club-branding/scripts/aplicar.ts <slug> tema.json <logo>
+   ```
+   Si `DATABASE_URL` no es local se niega; contra producción hay que confirmarlo y pasar `--produccion`.
+
+Con el escudo demo, la skill extrae rojo `#b5121b` (55 %), blanco, azul `#1d3f8f` y un contorno oscuro; elige rojo como primario y azul como secundario, con texto blanco. Ese es el tema del club demo en `prisma/seed.ts`.
+
+**En producción**, además de `aplicar.ts --produccion` contra Neon, el logo de `public/clubs/` se commitea y se despliega (Vercel solo sirve lo que está en el repo). El tema se ve en el subdominio del club (aunque no haya sesión), para los usuarios del club en toda la app y en `/c/<slug>` para el admin general.
+
+**Pendiente:** que el admin del club suba el escudo desde la configuración (con almacenamiento de archivos, p. ej. Vercel Blob) y elija entre los colores propuestos.
+
 ## Stack
 
 Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · NextAuth (JWT, link mágico por mail + login demo) · Prisma · PostgreSQL · Zod · Vitest
