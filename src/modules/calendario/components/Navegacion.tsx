@@ -14,7 +14,7 @@ export function SelectorVista({ base, v, vistas = ["semana", "mes", "lista"] }: 
         <Link
           key={vista}
           href={hrefAgenda(base, { ...v, vista })}
-          className={`px-3 py-1.5 ${vista === v.vista ? "bg-emerald-700 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+          className={`px-3 py-1.5 ${vista === v.vista ? "bg-primario text-sobre-primario" : "bg-white text-slate-700 hover:bg-slate-50"}`}
         >
           {ETIQUETAS[vista]}
         </Link>
@@ -33,13 +33,13 @@ export function NavegacionSemana({ base, v, hoy }: { base: string; v: VistaAgend
   const domingo = new Date(lunes.getTime() + 6 * DIA_MS);
   return (
     <div className="flex items-center gap-3 text-sm">
-      <Link href={mover(-7)} className="text-emerald-700 underline" aria-label="Semana anterior">
+      <Link href={mover(-7)} className="text-primario-700 underline" aria-label="Semana anterior">
         ←
       </Link>
       <span className="font-semibold text-slate-800">
         {formatDiaCorto(lunes)} – {formatDiaCorto(domingo)}
       </span>
-      <Link href={mover(7)} className="text-emerald-700 underline" aria-label="Semana siguiente">
+      <Link href={mover(7)} className="text-primario-700 underline" aria-label="Semana siguiente">
         →
       </Link>
       <Link href={hrefAgenda(base, { ...v, semana: claveDia(hoy), mes: claveDia(hoy).slice(0, 7) })} className="text-slate-500 underline">
@@ -56,11 +56,11 @@ export function NavegacionMesAgenda({ base, v }: { base: string; v: VistaAgenda 
   const siguiente = periodoSiguiente(v.mes);
   return (
     <div className="flex items-center gap-3 text-sm">
-      <Link href={ir(anterior)} className="text-emerald-700 underline" aria-label={nombreMes(anterior)}>
+      <Link href={ir(anterior)} className="text-primario-700 underline" aria-label={nombreMes(anterior)}>
         ←
       </Link>
       <span className="font-semibold capitalize text-slate-800">{nombreMes(v.mes)}</span>
-      <Link href={ir(siguiente)} className="text-emerald-700 underline" aria-label={nombreMes(siguiente)}>
+      <Link href={ir(siguiente)} className="text-primario-700 underline" aria-label={nombreMes(siguiente)}>
         →
       </Link>
     </div>

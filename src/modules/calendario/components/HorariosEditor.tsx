@@ -83,7 +83,7 @@ export function HorariosEditor({ iniciales }: { iniciales: { diaSemana: number; 
         onClick={() =>
           setRenglones([...renglones, { clave: proxima, dia: ultimo?.dia ?? 1, hora: ultimo?.hora ?? "19:00", dur: ultimo?.dur ?? 60 }])
         }
-        className="mt-1 self-start text-sm font-medium text-emerald-700 hover:underline"
+        className="mt-1 self-start text-sm font-medium text-primario-700 hover:underline"
       >
         + Agregar horario
       </button>

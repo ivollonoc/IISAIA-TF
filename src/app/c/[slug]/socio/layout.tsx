@@ -19,7 +19,7 @@ export default async function SocioLayout({
 
   return (
     <>
-      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-emerald-700">{club.nombre}</p>
+      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-primario-700">{club.nombre}</p>
       <Tabs
         items={[
           { href: base, label: "Mi cuenta" },

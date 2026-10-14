@@ -35,6 +35,7 @@ El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck 
 ├── .env.example, .env.test     variables de entorno (.env no se versiona)
 ├── .github/workflows/ci.yml    CI en GitHub Actions
 │
+├── public/clubs/               escudos de los clubes (Club.logoUrl)
 ├── prisma/
 │   ├── schema.prisma           modelo de datos (toda tabla de negocio lleva clubId)
 │   ├── migrations/             historial versionado (0_init + una carpeta por etapa)
@@ -60,6 +61,7 @@ El CI (`.github/workflows/ci.yml`) corre: migrate deploy → seed → typecheck 
 │   │   ├── api.ts              guards y respuestas JSON de la API (apiClub…)
 │   │   ├── permisos.ts         reglas de acceso puras
 │   │   ├── tenant.ts           subdominios: urlClub / urlVisible / decidirRuta
+│   │   ├── tema.ts             tema por club (Zod + contraste AA) → variables CSS --club-*
 │   │   ├── action.ts           ejecutar(): envoltorio de Server Actions (revalida y redirige con aviso)
 │   │   ├── aviso.ts            ?ok= / ?error= firmados en la URL
 │   │   ├── errors.ts           error de negocio → mensaje legible
@@ -91,7 +93,7 @@ Convención: `service.ts` (lógica, siempre recibe y filtra por `clubId`) · `sc
 | Módulo | Qué hace |
 |---|---|
 | `acceso` | Login sin contraseña: link mágico (token hasheado, un uso), invitaciones, usuarios demo |
-| `clubs` | Alta de clubes y su admin (solo superadmin); configuración del club |
+| `clubs` | Alta de clubes y su admin (solo superadmin); configuración del club; escudo y tema (`visual.ts`) |
 | `cuotas` | Tipos de socio y su cuota mensual |
 | `socios` | ABM de socios, grupos familiares, importación CSV (parser propio, todo o nada) |
 | `cuenta-corriente` | Cargos por período, pagos (única vía para cancelar cargos), consultas y saldo |
@@ -114,6 +116,19 @@ Convención: `service.ts` (lógica, siempre recibe y filtra por `clubId`) · `sc
 - Avisos: los servicios llaman a `notificar()` (`notificaciones/emitir.ts`) después de confirmar la transacción; nunca lanza.
 - Cambios de modelo: editar `schema.prisma` y crear una migración (`npm run db:migrate`), nunca `db push`.
 - Tests de integración: solo contra una base cuyo nombre termine en `_test`.
+- Colores de marca con `primario` / `secundario` (`bg-primario text-sobre-primario`, `text-primario-700`,
+  `border-secundario`), que toman el tema del club (`lib/tema.ts`, variables `--club-*` en `globals.css`).
+  `emerald` queda solo para lo semántico (al día, pagado, cambios guardados), igual que ámbar y rojo.
+
+## Configuración del agente
+
+| Archivo | Para qué |
+|---|---|
+| `CLAUDE.md` | Este archivo: mapa, comandos y convenciones |
+| `.claude/settings.json` | Permisos del proyecto y plugins (lo personal va en `.claude/settings.local.json`, no versionado) |
+| `.claude/skills/club-branding/` | Skill propia: tematiza un club desde su logo. `paleta.ts` extrae colores (sharp) y arma la escala con contraste AA validada con `lib/tema.ts`; Claude elige primario y secundario mirando el logo; `aplicar.ts` guarda logo y tema (se niega si `DATABASE_URL` no es local) |
+
+Decisión: el tema se genera con una skill porque elegir el color institucional requiere criterio; la app solo valida y aplica.
 
 ## Git
 

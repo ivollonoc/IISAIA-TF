@@ -20,7 +20,7 @@ export function Titulo({ children, sub }: { children: ReactNode; sub?: string })
 }
 
 const variantes = {
-  primario: "bg-emerald-700 text-white hover:bg-emerald-800",
+  primario: "bg-primario text-sobre-primario hover:brightness-90",
   secundario: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
   peligro: "border border-red-300 bg-white text-red-700 hover:bg-red-50",
 };
@@ -42,7 +42,7 @@ export function Campo({ label, ...props }: InputHTMLAttributes<HTMLInputElement>
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="font-medium text-slate-700">{label}</span>
-      <input className="rounded-lg border border-slate-300 px-3 py-2 focus:border-emerald-600 focus:outline-none" {...props} />
+      <input className="rounded-lg border border-slate-300 px-3 py-2 focus:border-primario-600 focus:outline-none" {...props} />
     </label>
   );
 }

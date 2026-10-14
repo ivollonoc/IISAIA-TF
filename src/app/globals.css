@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+/* Colores de marca del club. Las utilidades (bg-primario, text-primario-700, ...)
+   leen variables --club-*, que el layout reemplaza con Club.tema (src/lib/tema.ts).
+   `inline` hace que la utilidad use la variable directamente, así un ancestro la puede pisar. */
+@theme inline {
+  --color-primario: var(--club-primario);
+  --color-sobre-primario: var(--club-sobre-primario);
+  --color-secundario: var(--club-secundario);
+  --color-primario-50: var(--club-50);
+  --color-primario-100: var(--club-100);
+  --color-primario-200: var(--club-200);
+  --color-primario-300: var(--club-300);
+  --color-primario-400: var(--club-400);
+  --color-primario-500: var(--club-500);
+  --color-primario-600: var(--club-600);
+  --color-primario-700: var(--club-700);
+  --color-primario-800: var(--club-800);
+  --color-primario-900: var(--club-900);
+  --color-primario-950: var(--club-950);
+}
+
+/* Tema por defecto (esmeralda), para el admin general y clubes sin tema. */
+:root {
+  --club-primario: #047857;
+  --club-sobre-primario: #ffffff;
+  --club-secundario: #065f46;
+  --club-50: #ecfdf5;
+  --club-100: #d1fae5;
+  --club-200: #a7f3d0;
+  --club-300: #6ee7b7;
+  --club-400: #34d399;
+  --club-500: #10b981;
+  --club-600: #059669;
+  --club-700: #047857;
+  --club-800: #065f46;
+  --club-900: #064e3b;
+  --club-950: #022c22;
+}
+
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
 }

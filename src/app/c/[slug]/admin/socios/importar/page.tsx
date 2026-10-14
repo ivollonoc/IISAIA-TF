@@ -12,7 +12,7 @@ export default async function ImportarSociosPage({ params }: { params: Promise<{
 
   return (
     <>
-      <Link href={urlClub(slug, "/admin/socios")} className="mb-2 inline-block text-sm text-emerald-700 underline">
+      <Link href={urlClub(slug, "/admin/socios")} className="mb-2 inline-block text-sm text-primario-700 underline">
         ← Volver a socios
       </Link>
       <Titulo sub="Alta masiva desde una planilla (por ejemplo, exportada de Excel como CSV)">Importar socios</Titulo>

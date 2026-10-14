@@ -34,6 +34,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "prisma": "^6.10.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.1.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
@@ -43,6 +44,7 @@
     "esbuild": true,
     "prisma": true,
     "@prisma/client": true,
-    "@prisma/engines": true
+    "@prisma/engines": true,
+    "sharp": true
   }
 }

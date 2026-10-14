@@ -23,7 +23,7 @@ export default async function AdminGeneralPage({ searchParams }: { searchParams:
                 <tr key={c.id}>
                   <td className="py-2 pr-4 font-medium">{c.nombre}</td>
                   <td className="py-2 pr-4">
-                    <Link href={urlClub(c.slug, "/admin")} className="text-emerald-700 underline">
+                    <Link href={urlClub(c.slug, "/admin")} className="text-primario-700 underline">
                       /c/{c.slug}
                     </Link>
                   </td>

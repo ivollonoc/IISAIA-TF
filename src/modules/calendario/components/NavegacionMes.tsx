@@ -8,11 +8,11 @@ export function NavegacionMes({ periodo, base }: { periodo: string; base: string
   const siguiente = periodoSiguiente(periodo);
   return (
     <div className="mb-4 flex items-center justify-between text-sm">
-      <Link href={`${base}?mes=${anterior}`} className="text-emerald-700 underline">
+      <Link href={`${base}?mes=${anterior}`} className="text-primario-700 underline">
         ← {nombreMes(anterior)}
       </Link>
       <span className="text-base font-semibold capitalize text-slate-800">{nombreMes(periodo)}</span>
-      <Link href={`${base}?mes=${siguiente}`} className="text-emerald-700 underline">
+      <Link href={`${base}?mes=${siguiente}`} className="text-primario-700 underline">
         {nombreMes(siguiente)} →
       </Link>
     </div>

@@ -85,7 +85,7 @@ export function FormEvento({
       </Selector>
       <fieldset className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 text-sm">
         <label className="flex items-center gap-2 font-medium text-slate-700">
-          <input type="checkbox" name="conInscripcion" className="accent-emerald-700" />
+          <input type="checkbox" name="conInscripcion" className="accent-primario-700" />
           Permite inscripción
         </label>
         <div className="grid grid-cols-2 gap-3">

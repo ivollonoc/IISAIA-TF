@@ -170,7 +170,7 @@ export default async function AgendaAdminPage({
                 <strong>{clase.actividad.nombre}</strong> · {formatDiaCorto(clase.fecha)} · {clase.horario.hora}–
                 {horaFin(clase.horario.hora, clase.horario.duracionMin)}
               </p>
-              <Link href={href({ actividad: clase.actividad.id })} className="text-sm text-emerald-700 underline">
+              <Link href={href({ actividad: clase.actividad.id })} className="text-sm text-primario-700 underline">
                 Ver actividad
               </Link>
               {!clase.excepcion && <p className="mt-1 text-sm text-slate-500">{estadoClase(null)}</p>}
@@ -314,7 +314,7 @@ export default async function AgendaAdminPage({
                 )}
               </div>
               <details className="mt-4 border-t border-slate-100 pt-3">
-                <summary className="cursor-pointer text-sm font-medium text-emerald-700">Editar actividad</summary>
+                <summary className="cursor-pointer text-sm font-medium text-primario-700">Editar actividad</summary>
                 <div className="mt-3">
                   <FormActividad
                     action={editarActividadAction.bind(null, slug, volver, actividad.id)}
@@ -341,7 +341,7 @@ export default async function AgendaAdminPage({
                 <Link
                   key={tipo}
                   href={href({ nuevo: tipo })}
-                  className={`px-3 py-1.5 ${nuevo === tipo ? "bg-emerald-700 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 ${nuevo === tipo ? "bg-primario text-sobre-primario" : "bg-white text-slate-700 hover:bg-slate-50"}`}
                 >
                   {tipo === "actividad" ? "Actividad" : "Evento"}
                 </Link>

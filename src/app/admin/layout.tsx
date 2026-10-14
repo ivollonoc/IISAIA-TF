@@ -6,7 +6,7 @@ export default async function AdminGeneralLayout({ children }: { children: React
   await requireSuperadmin();
   return (
     <>
-      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-emerald-700">Administración general</p>
+      <p className="mb-1 text-sm font-medium uppercase tracking-wide text-primario-700">Administración general</p>
       <Tabs
         items={[
           { href: "/admin", label: "Clubes" },

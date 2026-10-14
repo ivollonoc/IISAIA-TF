@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getUsuario } from "@/lib/session";
+import { clubDelPedido } from "@/modules/clubs/visual";
 import { contarNoLeidas } from "@/modules/notificaciones/service";
 import { LogoutButton } from "./LogoutButton";
 
@@ -8,11 +9,13 @@ const ROL_LABEL = { SUPERADMIN: "Admin general", ADMIN_CLUB: "Admin de club", SO
 export async function Header() {
   const user = await getUsuario();
   const noLeidas = user ? await contarNoLeidas(user.id) : 0;
+  const club = await clubDelPedido();
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b-4 border-secundario bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="font-bold text-emerald-800">
-          gestiondesocios
+        <Link href="/" className="flex items-center gap-2 font-bold text-primario-800">
+          {club?.logoUrl && <img src={club.logoUrl} alt="" className="h-8 w-8 object-contain" />}
+          {club ? club.nombre : "gestiondesocios"}
         </Link>
         {user && (
           <div className="flex items-center gap-4">
